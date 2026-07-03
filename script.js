@@ -1,12 +1,12 @@
 /* ============================================================
-   SONIQ STUDIO — script.js
-   Audio processing engine: Web Audio API + FFmpeg.wasm
+   SONIQ STUDIO — script.js  v2.0
+   Audio engine: Web Audio API preview + FFmpeg.wasm export
    ============================================================ */
 
 'use strict';
 
 // ── State ────────────────────────────────────────────────────
-const state = {
+const S = {
   files: [],
   activeIndex: -1,
   isPlaying: false,
@@ -14,7 +14,6 @@ const state = {
   isMuted: false,
   zoom: 1,
 
-  // Processing params
   speed: 1,
   pitch: 0,
   volume: 100,
@@ -37,134 +36,162 @@ const state = {
   exportFormat: 'mp3',
   exportQuality: { mp3: '192k', ogg: '6', wav: 'pcm_s16le', flac: '5' },
 
-  // FFmpeg & WaveSurfer refs
   ffmpegReady: false,
   wsReady: false,
   duration: 0,
   sampleRate: 44100,
   channels: 2,
   fileSize: 0,
-  audioBuffer: null,
 };
 
-// ── FFmpeg ────────────────────────────────────────────────────
+// ── Globals ───────────────────────────────────────────────────
 let ffmpeg = null;
 let fetchFileFn = null;
 let toBlobURLFn = null;
-
-// ── WaveSurfer ────────────────────────────────────────────────
 let wavesurfer = null;
+let specAnimFrame = null;
+let activeKnobDrag = null;
 
-// ── Web Audio (spectrum only) ─────────────────────────────────
-let audioCtx = null;
-let analyser = null;
-let spectrumSource = null;
-let spectrumAnimFrame = null;
-
-// ── DOM refs ─────────────────────────────────────────────────
+const specBars = [];
 const $ = (id) => document.getElementById(id);
-const $$ = (sel) => document.querySelector(sel);
 
-// ── Init ─────────────────────────────────────────────────────
+// ── Bootstrap ─────────────────────────────────────────────────
 (async () => {
-  registerServiceWorker();
+  loadSettings();
   initLucide();
   initDropZone();
-  initTransportControls();
+  initTransport();
   initKnobs();
   initSliders();
   initPresets();
   initEffects();
   initTrim();
   initExport();
+  initHeaderScroll();
+  initRipple();
+  updateVolWarning();
   await initFFmpeg();
 })();
 
-// ── Service Worker ────────────────────────────────────────────
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
+// ── LocalStorage ─────────────────────────────────────────────
+const SETTINGS_KEY = 'soniq_settings';
+const PERSISTED = ['speed','pitch','volume','bass','mid','treble',
+  'reverbAmount','echoDelay','fadeInDur','fadeOutDur','exportFormat','exportQuality'];
+
+function saveSettings() {
+  const data = {};
+  PERSISTED.forEach(k => { data[k] = S[k]; });
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
-// ── Lucide Icons ──────────────────────────────────────────────
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    PERSISTED.forEach(k => { if (data[k] !== undefined) S[k] = data[k]; });
+  } catch (e) {}
+}
+
+// ── Lucide ───────────────────────────────────────────────────
 function initLucide() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ── FFmpeg Init ───────────────────────────────────────────────
 async function initFFmpeg() {
-  const dot = $('ffmpegDot');
+  const dot   = $('ffmpegDot');
   const label = $('ffmpegLabel');
-
   dot.className = 'status-dot loading';
   label.textContent = 'Loading FFmpeg';
 
   try {
-    // Resolve globals from UMD bundles
-    const FFmpegNS = window.FFmpegWASM || window.FFmpeg || {};
-    const FFmpegUtilNS = window.FFmpegUtil || {};
+    // @ffmpeg/ffmpeg@0.12.x UMD exposes window.FFmpegWASM = { FFmpeg }
+    // @ffmpeg/util@0.12.x UMD exposes window.FFmpegUtil = { fetchFile, toBlobURL, ... }
+    const FWASM = window.FFmpegWASM || window.FFmpeg_WASM || {};
+    const FUTIL = window.FFmpegUtil  || window.FFmpeg_Util  || {};
 
-    const FFmpegClass = FFmpegNS.FFmpeg;
-    fetchFileFn = FFmpegUtilNS.fetchFile || FFmpegNS.fetchFile;
-    toBlobURLFn = FFmpegUtilNS.toBlobURL || FFmpegNS.toBlobURL;
+    const FFmpegClass = FWASM.FFmpeg;
+    fetchFileFn  = FUTIL.fetchFile  || FWASM.fetchFile;
+    toBlobURLFn  = FUTIL.toBlobURL  || FWASM.toBlobURL;
 
-    if (!FFmpegClass) throw new Error('FFmpeg class not found');
-    if (!fetchFileFn) throw new Error('fetchFile not found');
+    if (!FFmpegClass) throw new Error(
+      'FFmpeg class not found. This requires crossOriginIsolated = true.\n' +
+      'The service worker (sw.js) handles this automatically — make sure it\'s in the same folder and you\'re serving over HTTP (not file://).'
+    );
+    if (!fetchFileFn) throw new Error('fetchFile not found in FFmpegUtil');
 
     ffmpeg = new FFmpegClass();
-
-    ffmpeg.on('log', ({ message }) => {
-      // Optionally log progress messages
-      parseFFmpegProgress(message);
-    });
+    ffmpeg.on('log', ({ message }) => parseFFmpegProgress(message));
 
     const BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/';
-
     if (toBlobURLFn) {
-      const coreURL = await toBlobURLFn(BASE + 'ffmpeg-core.js', 'text/javascript');
-      const wasmURL = await toBlobURLFn(BASE + 'ffmpeg-core.wasm', 'application/wasm');
+      const [coreURL, wasmURL] = await Promise.all([
+        toBlobURLFn(BASE + 'ffmpeg-core.js',   'text/javascript'),
+        toBlobURLFn(BASE + 'ffmpeg-core.wasm', 'application/wasm'),
+      ]);
       await ffmpeg.load({ coreURL, wasmURL });
     } else {
-      // Fallback: direct URL (may fail without service worker COOP/COEP headers)
-      await ffmpeg.load({
-        coreURL: BASE + 'ffmpeg-core.js',
-        wasmURL: BASE + 'ffmpeg-core.wasm',
-      });
+      await ffmpeg.load({ coreURL: BASE + 'ffmpeg-core.js', wasmURL: BASE + 'ffmpeg-core.wasm' });
     }
 
-    state.ffmpegReady = true;
+    S.ffmpegReady = true;
     dot.className = 'status-dot ready';
     label.textContent = 'FFmpeg Ready';
-    const badge = $('ffmpegStatus');
-    badge.classList.add('ready');
+    $('ffmpegStatus').classList.add('ready');
     updateExportInfo();
   } catch (err) {
-    console.error('FFmpeg load error:', err);
+    console.error('[SONIQ] FFmpeg init error:', err);
     dot.className = 'status-dot error';
-    label.textContent = 'FFmpeg Unavailable';
-    // Still allow export button (will show error)
+    label.textContent = 'FFmpeg Offline';
+    // Show hint if not cross-origin-isolated
+    if (!window.crossOriginIsolated) {
+      console.warn(
+        '[SONIQ] crossOriginIsolated is false. The service worker may not have activated yet.\n' +
+        'Hard-refresh the page (Ctrl+Shift+R / Cmd+Shift+R) to activate it.'
+      );
+    }
   }
 }
 
 let ffmpegProgressDuration = 0;
 function parseFFmpegProgress(msg) {
-  const timeMatch = msg.match(/time=(\d+):(\d+):(\d+\.\d+)/);
-  if (timeMatch) {
-    const sec = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseFloat(timeMatch[3]);
-    const totalEst = ffmpegProgressDuration || state.duration;
-    if (totalEst > 0) {
-      const pct = Math.min(100, (sec / totalEst) * 100);
-      setProcessingProgress(pct);
-    }
+  const m = msg.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+  if (m) {
+    const sec = +m[1] * 3600 + +m[2] * 60 + parseFloat(m[3]);
+    const total = ffmpegProgressDuration || S.duration;
+    if (total > 0) setProgress(Math.min(95, (sec / total) * 90 + 5));
   }
+}
+
+// ── Ripple Effect ─────────────────────────────────────────────
+function initRipple() {
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('button, .preset-btn, .format-btn, .quality-btn, .file-chip');
+    if (!target) return;
+    const r = document.createElement('span');
+    r.className = 'ripple-effect';
+    const rect = target.getBoundingClientRect();
+    r.style.left = `${e.clientX - rect.left}px`;
+    r.style.top  = `${e.clientY - rect.top}px`;
+    target.style.position = target.style.position || 'relative';
+    target.style.overflow = 'hidden';
+    target.appendChild(r);
+    setTimeout(() => r.remove(), 560);
+  });
+}
+
+// ── Header scroll effect ──────────────────────────────────────
+function initHeaderScroll() {
+  const header = $('siteHeader');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 10);
+  }, { passive: true });
 }
 
 // ── Drop Zone ─────────────────────────────────────────────────
 function initDropZone() {
-  const zone = $('dropzone');
+  const zone      = $('dropzone');
   const fileInput = $('fileInput');
   const browseBtn = $('browseBtn');
   const addMoreBtn = $('addMoreBtn');
@@ -173,1068 +200,893 @@ function initDropZone() {
   browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
   addMoreBtn.addEventListener('click', () => fileInput.click());
 
-  zone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    zone.classList.add('dragover');
-  });
-  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', (e) => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('dragover'); });
   zone.addEventListener('drop', (e) => {
     e.preventDefault();
     zone.classList.remove('dragover');
-    const files = Array.from(e.dataTransfer.files).filter(isAudioFile);
+    const files = [...e.dataTransfer.files].filter(isAudio);
     if (files.length) addFiles(files);
   });
 
   fileInput.addEventListener('change', () => {
-    const files = Array.from(fileInput.files).filter(isAudioFile);
+    const files = [...fileInput.files].filter(isAudio);
     if (files.length) addFiles(files);
     fileInput.value = '';
   });
 }
 
-function isAudioFile(f) {
-  return f.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|aiff|opus|wma)$/i.test(f.name);
+const AUDIO_EXTS = /\.(mp3|wav|ogg|flac|aac|m4a|aiff|opus|wma|mp4|webm)$/i;
+function isAudio(f) {
+  return f.type.startsWith('audio/') || AUDIO_EXTS.test(f.name);
 }
 
 function addFiles(files) {
-  files.forEach((f) => {
-    if (!state.files.find((x) => x.name === f.name && x.size === f.size)) {
-      state.files.push(f);
-    }
+  files.forEach(f => {
+    if (!S.files.find(x => x.name === f.name && x.size === f.size)) S.files.push(f);
   });
-  renderFileQueue();
-  if (state.activeIndex === -1) loadFile(0);
-  show($('fileQueueSection'));
-  show($('panelsRow'));
-  show($('trimSection'));
-  show($('exportSection'));
-  show($('infoBar'));
+  renderQueue();
+  if (S.activeIndex === -1) loadFile(0);
+  showUI();
   updateFileCount();
 }
 
-function renderFileQueue() {
+function showUI() {
+  [$('fileQueueSection'), $('panelsRow'), $('trimSection'), $('exportSection'), $('infoBar')].forEach(el => {
+    if (el) el.classList.remove('hidden');
+  });
+  $('dropzone').classList.add('hidden');
+}
+
+function renderQueue() {
   const queue = $('fileQueue');
   queue.innerHTML = '';
-  state.files.forEach((f, i) => {
+  S.files.forEach((f, i) => {
     const chip = document.createElement('div');
-    chip.className = 'file-chip' + (i === state.activeIndex ? ' active' : '');
+    chip.className = 'file-chip' + (i === S.activeIndex ? ' active' : '');
     chip.innerHTML = `
       <span class="chip-icon"><i data-lucide="music"></i></span>
-      <span class="chip-name" title="${esc(f.name)}">${esc(truncateName(f.name))}</span>
-      <span class="chip-size">${formatBytes(f.size)}</span>
-      <button class="chip-remove" data-index="${i}" title="Remove"><i data-lucide="x"></i></button>
+      <span class="chip-name" title="${esc(f.name)}">${esc(truncate(f.name, 22))}</span>
+      <span class="chip-size">${fmtBytes(f.size)}</span>
+      <button class="chip-remove" data-i="${i}" title="Remove"><i data-lucide="x"></i></button>
     `;
-    chip.addEventListener('click', (e) => {
-      if (!e.target.closest('.chip-remove')) loadFile(i);
-    });
-    chip.querySelector('.chip-remove').addEventListener('click', (e) => {
+    chip.addEventListener('click', e => { if (!e.target.closest('.chip-remove')) loadFile(i); });
+    chip.querySelector('.chip-remove').addEventListener('click', e => {
       e.stopPropagation();
-      removeFile(parseInt(e.currentTarget.dataset.index));
+      removeFile(+e.currentTarget.dataset.i);
     });
     queue.appendChild(chip);
   });
   lucide.createIcons();
 }
 
-function removeFile(index) {
-  state.files.splice(index, 1);
-  if (state.files.length === 0) {
-    state.activeIndex = -1;
-    hide($('fileQueueSection'));
-    hide($('waveformSection'));
-    hide($('panelsRow'));
-    hide($('trimSection'));
-    hide($('exportSection'));
-    hide($('infoBar'));
-    show($('dropzone'));
-    if (wavesurfer) { wavesurfer.empty(); }
+function removeFile(i) {
+  S.files.splice(i, 1);
+  if (!S.files.length) {
+    S.activeIndex = -1;
+    [$('fileQueueSection'), $('waveformSection'), $('panelsRow'),
+      $('trimSection'), $('exportSection'), $('infoBar')].forEach(el => el && el.classList.add('hidden'));
+    $('dropzone').classList.remove('hidden');
+    if (wavesurfer) { wavesurfer.destroy(); wavesurfer = null; }
     updateFileCount();
     return;
   }
-  if (state.activeIndex >= state.files.length) {
-    state.activeIndex = state.files.length - 1;
-  }
-  renderFileQueue();
-  loadFile(state.activeIndex);
+  if (S.activeIndex >= S.files.length) S.activeIndex = S.files.length - 1;
+  renderQueue();
+  loadFile(S.activeIndex);
   updateFileCount();
 }
 
 function updateFileCount() {
   const badge = $('fileCountBadge');
-  const label = $('fileCountLabel');
-  if (state.files.length > 0) {
-    label.textContent = `${state.files.length} File${state.files.length > 1 ? 's' : ''}`;
+  const lbl   = $('fileCountLabel');
+  if (S.files.length) {
+    lbl.textContent = `${S.files.length} File${S.files.length > 1 ? 's' : ''}`;
     badge.style.display = 'flex';
   } else {
     badge.style.display = 'none';
   }
 }
 
-// ── File Loading / WaveSurfer ─────────────────────────────────
+// ── File Loading ───────────────────────────────────────────────
 async function loadFile(index) {
-  state.activeIndex = index;
-  const file = state.files[index];
-  renderFileQueue();
+  S.activeIndex = index;
+  const f = S.files[index];
+  renderQueue();
 
-  show($('waveformSection'));
-  $('wfmFilename').textContent = file.name;
+  $('waveformSection').classList.remove('hidden');
+  $('wfmFilename').textContent = f.name;
   $('wfmTime').textContent = '0:00 / 0:00';
-  $('wfmSize').textContent = formatBytes(file.size);
-  state.fileSize = file.size;
-  state.wsReady = false;
-  state.isPlaying = false;
-
+  $('wfmSize').textContent = fmtBytes(f.size);
+  S.fileSize = f.size;
+  S.wsReady  = false;
+  S.isPlaying = false;
   updatePlayIcon();
-  hide($('dropzone'));
-  updateInfoBar({});
 
-  initWaveSurfer(file);
-  decodeFileInfo(file);
+  initWaveSurfer(f);
+  decodeFileInfo(f);
 }
 
 function initWaveSurfer(file) {
-  if (wavesurfer) {
-    wavesurfer.destroy();
-    wavesurfer = null;
-  }
+  if (wavesurfer) { wavesurfer.destroy(); wavesurfer = null; }
 
   wavesurfer = WaveSurfer.create({
-    container: '#waveform',
-    waveColor: 'rgba(180, 20, 20, 0.55)',
-    progressColor: 'rgba(220, 38, 38, 0.9)',
-    cursorColor: 'rgba(255,255,255,0.7)',
-    cursorWidth: 1.5,
-    height: 120,
-    barWidth: 2,
-    barGap: 1.5,
-    barRadius: 2,
-    normalize: true,
-    interact: true,
-    minPxPerSec: 50,
-    fillParent: true,
+    container:     '#waveform',
+    waveColor:     'rgba(160, 18, 18, 0.55)',
+    progressColor: 'rgba(220, 38, 38, 0.92)',
+    cursorColor:   'rgba(255,255,255,0.75)',
+    cursorWidth:   1.5,
+    height:        120,
+    barWidth:      2,
+    barGap:        1.5,
+    barRadius:     2,
+    normalize:     true,
+    interact:      true,
+    fillParent:    true,
   });
 
   wavesurfer.on('ready', () => {
-    state.wsReady = true;
-    state.duration = wavesurfer.getDuration();
-    state.isPlaying = false;
+    S.wsReady   = true;
+    S.duration  = wavesurfer.getDuration();
+    S.isPlaying = false;
     updatePlayIcon();
     updateTimeDisplay();
     updateTrimEnd();
     renderRuler();
-    updateInfoBar({});
+    updateInfoBar();
     updateExportInfo();
     initSpectrum();
+    applyPreview();
   });
 
-  wavesurfer.on('audioprocess', () => {
-    updateTimeDisplay();
-  });
+  wavesurfer.on('audioprocess', updateTimeDisplay);
+  wavesurfer.on('seeking',      updateTimeDisplay);
 
-  wavesurfer.on('seeking', () => {
-    updateTimeDisplay();
-  });
-
-  wavesurfer.on('play', () => {
-    state.isPlaying = true;
-    updatePlayIcon();
-    resumeAudioCtx();
-  });
-
-  wavesurfer.on('pause', () => {
-    state.isPlaying = false;
-    updatePlayIcon();
-  });
-
+  wavesurfer.on('play',   () => { S.isPlaying = true;  updatePlayIcon(); });
+  wavesurfer.on('pause',  () => { S.isPlaying = false; updatePlayIcon(); });
   wavesurfer.on('finish', () => {
-    state.isPlaying = false;
+    S.isPlaying = false;
     updatePlayIcon();
-    if (state.isLooping) wavesurfer.play();
+    if (S.isLooping) wavesurfer.play();
   });
 
-  const url = URL.createObjectURL(file);
-  wavesurfer.load(url);
+  wavesurfer.on('ready', () => applyPreview());
 
-  // Apply current speed/volume
-  wavesurfer.on('ready', () => {
-    applyPreviewParams();
-  });
+  wavesurfer.load(URL.createObjectURL(file));
 }
 
-function applyPreviewParams() {
-  if (!wavesurfer || !state.wsReady) return;
-  wavesurfer.setPlaybackRate(state.speed, true); // preservePitch = true
-  const vol = state.isMuted ? 0 : (state.volume / 100);
-  wavesurfer.setVolume(Math.min(3, vol));
+function applyPreview() {
+  if (!wavesurfer || !S.wsReady) return;
+  wavesurfer.setPlaybackRate(S.speed, true); // preservePitch = true
+  wavesurfer.setVolume(S.isMuted ? 0 : Math.min(3, S.volume / 100));
 }
 
 async function decodeFileInfo(file) {
   try {
-    const arrayBuf = await file.arrayBuffer();
+    const buf = await file.arrayBuffer();
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const decoded = await ctx.decodeAudioData(arrayBuf);
-    state.sampleRate = decoded.sampleRate;
-    state.channels = decoded.numberOfChannels;
+    const decoded = await ctx.decodeAudioData(buf);
+    S.sampleRate = decoded.sampleRate;
+    S.channels   = decoded.numberOfChannels;
     ctx.close();
-    updateInfoBar({});
-  } catch (e) {
-    // fallback
-  }
+    updateInfoBar();
+  } catch (_) {}
 }
 
-function updateInfoBar(override) {
-  const sr = override.sampleRate ?? state.sampleRate;
-  const ch = override.channels ?? state.channels;
-  const dur = override.duration ?? state.duration;
-  const procDur = computeProcessedDuration();
-
-  $('infoSampleRate').textContent = sr ? `${sr.toLocaleString()}Hz` : '—';
-  $('infoChannels').textContent = ch === 1 ? 'Mono' : ch === 2 ? 'Stereo' : ch ? `${ch}ch` : '—';
-  $('infoOrigDuration').textContent = dur ? formatTime(dur) : '—';
-  $('infoProcDuration').textContent = procDur ? formatTime(procDur) : '—';
-  $('infoFileSize').textContent = state.fileSize ? formatBytes(state.fileSize) : '—';
-  $('infoFormat').textContent = state.files[state.activeIndex]
-    ? getFileExt(state.files[state.activeIndex].name).toUpperCase()
-    : '—';
+function updateInfoBar() {
+  $('infoSampleRate').textContent  = S.sampleRate ? `${S.sampleRate.toLocaleString()}Hz` : '—';
+  $('infoChannels').textContent    = S.channels === 1 ? 'Mono' : S.channels === 2 ? 'Stereo' : S.channels ? `${S.channels}ch` : '—';
+  $('infoOrigDuration').textContent = S.duration ? fmtTime(S.duration) : '—';
+  $('infoProcDuration').textContent = S.duration ? fmtTime(calcProcDur()) : '—';
+  $('infoFileSize').textContent    = S.fileSize ? fmtBytes(S.fileSize) : '—';
+  $('infoFormat').textContent      = S.files[S.activeIndex] ? ext(S.files[S.activeIndex].name).toUpperCase() : '—';
 }
 
-function computeProcessedDuration() {
-  if (!state.duration) return 0;
-  const trimEnd = state.trimEnabled && state.trimEnd > state.trimStart ? state.trimEnd : state.duration;
-  const trimStart = state.trimEnabled ? state.trimStart : 0;
-  const clippedDur = trimEnd - trimStart;
-  return clippedDur / state.speed;
+function calcProcDur() {
+  if (!S.duration) return 0;
+  const te = S.trimEnabled && S.trimEnd > S.trimStart ? S.trimEnd : S.duration;
+  const ts = S.trimEnabled ? S.trimStart : 0;
+  return (te - ts) / S.speed;
 }
 
 // ── Spectrum Analyzer ─────────────────────────────────────────
-const spectrumState = {
-  bars: [],
-  initialized: false,
-};
-
 function initSpectrum() {
-  if (spectrumAnimFrame) cancelAnimationFrame(spectrumAnimFrame);
-
-  const canvas = $('spectrumCanvas');
-  if (!canvas) return;
-
-  const bars = 64;
-  spectrumState.bars = Array.from({ length: bars }, (_, i) => ({
-    height: Math.random() * 0.08 + 0.01,
-    target: 0,
-    phase: i * 0.35,
-    freq: 0.6 + Math.random() * 0.4,
-  }));
-  spectrumState.initialized = true;
-
+  if (specAnimFrame) cancelAnimationFrame(specAnimFrame);
+  const COUNT = 64;
+  specBars.length = 0;
+  for (let i = 0; i < COUNT; i++) {
+    specBars.push({ h: Math.random() * 0.04 + 0.005, target: 0, phase: i * 0.38, freq: 0.5 + Math.random() * 0.5 });
+  }
   drawSpectrum();
 }
-
-function resumeAudioCtx() {}
 
 function drawSpectrum() {
   const canvas = $('spectrumCanvas');
   if (!canvas) return;
-
-  const parent = canvas.parentElement;
-  const w = parent ? parent.offsetWidth : 800;
-  const h = parent ? parent.offsetHeight : 52;
-  if (canvas.width !== w) canvas.width = w;
-  if (canvas.height !== h) canvas.height = h;
+  const pw = canvas.parentElement ? canvas.parentElement.offsetWidth : 800;
+  const ph = canvas.parentElement ? canvas.parentElement.offsetHeight : 54;
+  if (canvas.width !== pw) canvas.width = pw;
+  if (canvas.height !== ph) canvas.height = ph;
 
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, pw, ph);
 
-  const bars = spectrumState.bars;
-  if (!bars || bars.length === 0) {
-    spectrumAnimFrame = requestAnimationFrame(drawSpectrum);
-    return;
-  }
+  const now  = Date.now() / 1000;
+  const bars = specBars.length;
+  const barW = pw / bars;
+  const gap  = 1.5;
 
-  const barW = w / bars.length;
-  const gap = 1.5;
-  const now = Date.now() / 1000;
-  const playing = state.isPlaying;
-
-  for (let i = 0; i < bars.length; i++) {
-    const bar = bars[i];
-
-    // Simulate frequency spectrum envelope (lower freqs higher, rolloff at top)
-    const freqEnv = Math.pow(1 - i / bars.length, 0.5);
-
-    if (playing) {
-      const noise = Math.random() * 0.4;
-      const wave = Math.sin(now * bar.freq * 3 + bar.phase) * 0.25 + 0.25;
-      bar.target = (noise * 0.5 + wave * 0.5) * freqEnv * 0.85 + 0.03;
+  for (let i = 0; i < bars; i++) {
+    const b = specBars[i];
+    const env = Math.pow(Math.sin((i / bars) * Math.PI), 0.6);
+    if (S.isPlaying) {
+      b.target = (Math.random() * 0.5 + Math.sin(now * b.freq * 3.5 + b.phase) * 0.3 + 0.3) * env * 0.82 + 0.02;
     } else {
-      bar.target = (Math.sin(now * bar.freq + bar.phase) * 0.5 + 0.5) * freqEnv * 0.08 + 0.008;
+      b.target = (Math.sin(now * b.freq + b.phase) * 0.5 + 0.5) * env * 0.07 + 0.005;
     }
+    b.h += (b.target - b.h) * (b.target > b.h ? 0.3 : 0.1);
 
-    // Smooth movement (attack fast, decay slow)
-    const lerpRate = bar.target > bar.height ? 0.35 : 0.12;
-    bar.height += (bar.target - bar.height) * lerpRate;
-
-    const barH = bar.height * h;
+    const bh = b.h * ph;
+    if (bh < 0.5) continue;
     const x = i * barW + gap / 2;
-    const y = h - barH;
+    const y = ph - bh;
 
-    if (barH < 1) continue;
-
-    const gradient = ctx.createLinearGradient(0, h, 0, y);
-    gradient.addColorStop(0, 'rgba(185, 28, 28, 0.95)');
-    gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.7)');
-    gradient.addColorStop(1, 'rgba(239, 68, 68, 0.15)');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(x, y, barW - gap, barH);
+    const g = ctx.createLinearGradient(0, ph, 0, y);
+    g.addColorStop(0,   'rgba(176, 20, 20, 0.95)');
+    g.addColorStop(0.4, 'rgba(220, 38, 38, 0.7)');
+    g.addColorStop(1,   'rgba(239, 68, 68, 0.1)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, barW - gap, bh);
   }
 
-  spectrumAnimFrame = requestAnimationFrame(drawSpectrum);
+  specAnimFrame = requestAnimationFrame(drawSpectrum);
 }
 
-// ── Waveform Ruler ────────────────────────────────────────────
+// ── Ruler ─────────────────────────────────────────────────────
 function renderRuler() {
   const ruler = $('waveformRuler');
-  if (!ruler || !state.duration) return;
+  if (!ruler || !S.duration) return;
   ruler.innerHTML = '';
-
-  const containerW = ruler.offsetWidth;
-  const dur = state.duration;
-  const step = calculateTickStep(dur);
-
-  for (let t = 0; t <= dur; t += step) {
-    const pct = (t / dur) * 100;
-    const tick = document.createElement('div');
-    tick.className = 'ruler-tick';
-    tick.style.left = `${pct}%`;
-    tick.style.position = 'absolute';
-    tick.innerHTML = `<div class="ruler-tick-line"></div><span class="ruler-tick-label">${formatTime(t)}</span>`;
-    ruler.appendChild(tick);
+  const step = S.duration <= 30 ? 5 : S.duration <= 90 ? 10 : S.duration <= 300 ? 30 : S.duration <= 900 ? 60 : 120;
+  for (let t = 0; t <= S.duration; t += step) {
+    const el = document.createElement('div');
+    el.className = 'ruler-tick';
+    el.style.left = `${(t / S.duration) * 100}%`;
+    el.innerHTML = `<div class="ruler-tick-line"></div><span class="ruler-tick-label">${fmtTime(t)}</span>`;
+    ruler.appendChild(el);
   }
-}
-
-function calculateTickStep(dur) {
-  if (dur <= 30) return 5;
-  if (dur <= 60) return 10;
-  if (dur <= 180) return 30;
-  if (dur <= 600) return 60;
-  return 120;
 }
 
 // ── Transport ─────────────────────────────────────────────────
-function initTransportControls() {
+function initTransport() {
   $('playBtn').addEventListener('click', togglePlay);
-  $('stopBtn').addEventListener('click', stopPlay);
-  $('restartBtn').addEventListener('click', restartPlay);
-  $('rewind5Btn').addEventListener('click', () => seekRelative(-5));
-  $('fastforward5Btn').addEventListener('click', () => seekRelative(5));
+  $('stopBtn').addEventListener('click', stop);
+  $('restartBtn').addEventListener('click', restart);
+  $('rewind5Btn').addEventListener('click', () => seek(-5));
+  $('fastforward5Btn').addEventListener('click', () => seek(5));
   $('loopBtn').addEventListener('click', toggleLoop);
   $('muteBtn').addEventListener('click', toggleMute);
   $('zoomInBtn').addEventListener('click', () => changeZoom(1));
   $('zoomOutBtn').addEventListener('click', () => changeZoom(-1));
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-    if (e.code === 'ArrowLeft') seekRelative(-5);
-    if (e.code === 'ArrowRight') seekRelative(5);
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'Space')       { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowLeft')   { e.preventDefault(); seek(-5); }
+    if (e.code === 'ArrowRight')  { e.preventDefault(); seek(5); }
+    if (e.key === 'm' || e.key === 'M') toggleMute();
   });
 }
 
 function togglePlay() {
-  if (!wavesurfer || !state.wsReady) return;
+  if (!wavesurfer || !S.wsReady) return;
   wavesurfer.playPause();
 }
 
-function stopPlay() {
-  if (!wavesurfer || !state.wsReady) return;
+function stop() {
+  if (!wavesurfer || !S.wsReady) return;
   wavesurfer.stop();
-  state.isPlaying = false;
+  S.isPlaying = false;
   updatePlayIcon();
 }
 
-function restartPlay() {
-  if (!wavesurfer || !state.wsReady) return;
+function restart() {
+  if (!wavesurfer || !S.wsReady) return;
   wavesurfer.setTime(0);
-  if (!state.isPlaying) wavesurfer.play();
+  if (!S.isPlaying) wavesurfer.play();
 }
 
-function seekRelative(sec) {
-  if (!wavesurfer || !state.wsReady) return;
-  const t = Math.max(0, Math.min(state.duration, wavesurfer.getCurrentTime() + sec));
-  wavesurfer.setTime(t);
+function seek(delta) {
+  if (!wavesurfer || !S.wsReady) return;
+  wavesurfer.setTime(clamp(wavesurfer.getCurrentTime() + delta, 0, S.duration));
 }
 
 function toggleLoop() {
-  state.isLooping = !state.isLooping;
-  $('loopBtn').classList.toggle('active', state.isLooping);
+  S.isLooping = !S.isLooping;
+  $('loopBtn').classList.toggle('active', S.isLooping);
 }
 
 function toggleMute() {
-  state.isMuted = !state.isMuted;
-  const icon = $('muteIcon');
-  if (state.isMuted) {
-    icon.setAttribute('data-lucide', 'volume-x');
-    $('muteBtn').classList.add('active');
-  } else {
-    icon.setAttribute('data-lucide', 'volume-2');
-    $('muteBtn').classList.remove('active');
-  }
+  S.isMuted = !S.isMuted;
+  $('muteIcon').setAttribute('data-lucide', S.isMuted ? 'volume-x' : 'volume-2');
+  $('muteBtn').classList.toggle('active', S.isMuted);
   lucide.createIcons();
-  applyPreviewParams();
+  applyPreview();
 }
 
 function changeZoom(dir) {
-  const levels = [1, 2, 4, 8, 16, 32];
-  let idx = levels.indexOf(state.zoom);
-  idx = Math.max(0, Math.min(levels.length - 1, idx + dir));
-  state.zoom = levels[idx];
-  $('zoomLabel').textContent = `${state.zoom}x`;
-  if (wavesurfer) wavesurfer.zoom(50 * state.zoom);
+  const lvls = [1, 2, 4, 8, 16, 32];
+  let i = lvls.indexOf(S.zoom);
+  i = clamp(i + dir, 0, lvls.length - 1);
+  S.zoom = lvls[i];
+  $('zoomLabel').textContent = `${S.zoom}x`;
+  if (wavesurfer) wavesurfer.zoom(50 * S.zoom);
 }
 
 function updatePlayIcon() {
   const icon = $('playIcon');
+  const btn  = $('playBtn');
   if (!icon) return;
-  icon.setAttribute('data-lucide', state.isPlaying ? 'pause' : 'play');
+  icon.setAttribute('data-lucide', S.isPlaying ? 'pause' : 'play');
+  btn.classList.toggle('playing', S.isPlaying);
   lucide.createIcons();
 }
 
 function updateTimeDisplay() {
-  if (!wavesurfer || !state.wsReady) return;
-  const cur = wavesurfer.getCurrentTime();
-  const dur = wavesurfer.getDuration();
-  $('wfmTime').textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+  if (!wavesurfer || !S.wsReady) return;
+  $('wfmTime').textContent = `${fmtTime(wavesurfer.getCurrentTime())} / ${fmtTime(S.duration)}`;
 }
 
 // ── Knobs ─────────────────────────────────────────────────────
-// Active drag state — one at a time
-let activeKnobDrag = null;
-
 function initKnobs() {
-  initKnob('speedKnob', 'speedSlider', 'speedKnobVal', 'speedSliderVal', formatSpeed, (v) => {
-    state.speed = v;
-    applyPreviewParams();
-    updateInfoBar({});
-    updateExportInfo();
-  });
-
-  initKnob('pitchKnob', 'pitchSlider', 'pitchKnobVal', 'pitchSliderVal', formatPitch, (v) => {
-    state.pitch = v;
-    updateExportInfo();
-  });
-
-  initKnob('volumeKnob', 'volumeSlider', 'volumeKnobVal', 'volumeSliderVal', formatVolume, (v) => {
-    state.volume = v;
-    applyPreviewParams();
-    updateExportInfo();
-  });
-
-  // Global mouse/touch up handler
-  document.addEventListener('mouseup', () => { activeKnobDrag = null; document.body.style.cursor = ''; });
-  document.addEventListener('touchend', () => { activeKnobDrag = null; });
-
+  // Global drag handlers (set once)
   document.addEventListener('mousemove', (e) => {
     if (!activeKnobDrag) return;
-    const { update, dragStartY, dragStartVal, min, max } = activeKnobDrag;
-    const delta = (dragStartY - e.clientY) * ((max - min) / 200);
-    update(dragStartVal + delta);
+    const { update, startY, startVal, min, max } = activeKnobDrag;
+    const delta = (startY - e.clientY) * ((max - min) / 220);
+    update(startVal + delta);
+  });
+  document.addEventListener('mouseup', () => {
+    if (!activeKnobDrag) return;
+    activeKnobDrag.canvas.classList.remove('dragging');
+    activeKnobDrag = null;
+    document.body.style.cursor = '';
+  });
+  document.addEventListener('touchend', () => {
+    if (!activeKnobDrag) return;
+    activeKnobDrag.canvas.classList.remove('dragging');
+    activeKnobDrag = null;
+  });
+
+  mountKnob('speedKnob',  'speedSlider',  'speedKnobVal',  'speedSliderVal',  fmtSpeed, v => {
+    S.speed = v; applyPreview(); updateInfoBar(); updateExportInfo(); saveSettings();
+  });
+  mountKnob('pitchKnob',  'pitchSlider',  'pitchKnobVal',  'pitchSliderVal',  fmtPitch, v => {
+    S.pitch = v; updateExportInfo(); saveSettings();
+  });
+  mountKnob('volumeKnob', 'volumeSlider', 'volumeKnobVal', 'volumeSliderVal', fmtVol, v => {
+    S.volume = v; applyPreview(); updateVolWarning(); updateExportInfo(); saveSettings();
   });
 }
 
-function initKnob(knobId, sliderId, knobValId, sliderValId, formatter, onChange) {
-  const canvas = $(knobId);
-  const slider = $(sliderId);
-  const knobVal = $(knobValId);
-  const sliderVal = $(sliderValId);
+function mountKnob(cid, sid, cvid, svid, fmt, onChange) {
+  const canvas = $(cid);
+  const slider = $(sid);
+  const cval   = $(cvid);
+  const sval   = $(svid);
 
-  const min = parseFloat(canvas.dataset.min);
-  const max = parseFloat(canvas.dataset.max);
+  const min  = parseFloat(canvas.dataset.min);
+  const max  = parseFloat(canvas.dataset.max);
   const step = parseFloat(canvas.dataset.step);
-  let value = parseFloat(canvas.dataset.value);
 
-  function update(v) {
-    value = clamp(snapToStep(v, step), min, max);
-    canvas.dataset.value = value;
-    drawKnob(canvas, value, min, max);
-    const fmt = formatter(value);
-    knobVal.textContent = fmt;
-    sliderVal.textContent = fmt;
-    slider.value = value;
-    updateSliderFill(slider);
-    onChange(value);
+  // Apply loaded settings to initial value
+  const settingMap = { speedKnob: 'speed', pitchKnob: 'pitch', volumeKnob: 'volume' };
+  const stateKey = settingMap[cid];
+  let cur = S[stateKey] !== undefined ? S[stateKey] : parseFloat(canvas.dataset.value);
+
+  function set(v) {
+    cur = clamp(snap(v, step), min, max);
+    canvas.dataset.value = cur;
+    drawKnob(canvas, cur, min, max);
+    const f = fmt(cur);
+    cval.textContent  = f;
+    sval.textContent  = f;
+    slider.value      = cur;
+    fillSlider(slider);
+    onChange(cur);
   }
 
-  drawKnob(canvas, value, min, max);
+  // Initialize
+  set(cur);
 
-  // Slider sync
-  slider.addEventListener('input', () => update(parseFloat(slider.value)));
+  slider.value = cur;
+  slider.addEventListener('input', () => set(parseFloat(slider.value)));
 
-  // Mouse drag on knob
   canvas.addEventListener('mousedown', (e) => {
-    activeKnobDrag = {
-      update,
-      min,
-      max,
-      dragStartY: e.clientY,
-      dragStartVal: parseFloat(canvas.dataset.value),
-    };
+    activeKnobDrag = { update: set, startY: e.clientY, startVal: cur, min, max, canvas };
+    canvas.classList.add('dragging');
     document.body.style.cursor = 'ns-resize';
     e.preventDefault();
   });
 
-  // Touch support
   canvas.addEventListener('touchstart', (e) => {
-    activeKnobDrag = {
-      update,
-      min,
-      max,
-      dragStartY: e.touches[0].clientY,
-      dragStartVal: parseFloat(canvas.dataset.value),
-    };
+    activeKnobDrag = { update: set, startY: e.touches[0].clientY, startVal: cur, min, max, canvas };
+    canvas.classList.add('dragging');
     e.preventDefault();
   }, { passive: false });
 
   canvas.addEventListener('touchmove', (e) => {
-    if (!activeKnobDrag || activeKnobDrag.update !== update) return;
-    const { dragStartY, dragStartVal } = activeKnobDrag;
-    const delta = (dragStartY - e.touches[0].clientY) * ((max - min) / 200);
-    update(dragStartVal + delta);
+    if (!activeKnobDrag || activeKnobDrag.canvas !== canvas) return;
+    const delta = (activeKnobDrag.startY - e.touches[0].clientY) * ((max - min) / 220);
+    set(activeKnobDrag.startVal + delta);
     e.preventDefault();
   }, { passive: false });
 
-  // Scroll wheel
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const dir = e.deltaY < 0 ? 1 : -1;
-    update(parseFloat(canvas.dataset.value) + dir * step);
+    set(cur + (e.deltaY < 0 ? 1 : -1) * step);
   }, { passive: false });
 
-  // Double-click to reset
   canvas.addEventListener('dblclick', () => {
     const defaults = { speedKnob: 1, pitchKnob: 0, volumeKnob: 100 };
-    update(defaults[knobId] ?? 1);
+    set(defaults[cid] ?? 1);
   });
 }
 
 function drawKnob(canvas, value, min, max) {
   const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  const cx = W / 2;
-  const cy = H / 2;
-  const r = W * 0.38;
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const R = W * 0.37;
 
   ctx.clearRect(0, 0, W, H);
 
-  // Outer glow ring
-  const glowGrad = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r * 1.1);
-  glowGrad.addColorStop(0, 'transparent');
-  glowGrad.addColorStop(1, 'rgba(220,38,38,0.06)');
-  ctx.fillStyle = glowGrad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2);
-  ctx.fill();
+  const startA = (Math.PI * 3) / 4;  // -225°
+  const endA   = Math.PI * 9 / 4;    // +45° (=405°)
+  const frac   = (value - min) / (max - min);
+  const curA   = startA + frac * (endA - startA);
 
-  const startAngle = (Math.PI * 3) / 4;  // 135°
-  const endAngle   = Math.PI * 9 / 4;    // 405° (135° + 270°)
-  const fraction   = (value - min) / (max - min);
-  const currentAngle = startAngle + fraction * (endAngle - startAngle);
-
-  // Track arc
+  // Track
   ctx.beginPath();
-  ctx.arc(cx, cy, r, startAngle, endAngle);
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 5;
+  ctx.arc(cx, cy, R, startA, endA);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 4.5;
   ctx.lineCap = 'round';
   ctx.stroke();
 
   // Value arc
-  if (fraction > 0) {
-    const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-    grad.addColorStop(0, 'rgba(185,28,28,0.9)');
-    grad.addColorStop(1, 'rgba(239,68,68,1)');
+  if (frac > 0.001) {
+    const arcGrad = ctx.createLinearGradient(cx - R, cy, cx + R, cy);
+    arcGrad.addColorStop(0, 'rgba(153,27,27,0.9)');
+    arcGrad.addColorStop(1, 'rgba(239,68,68,1)');
     ctx.beginPath();
-    ctx.arc(cx, cy, r, startAngle, currentAngle);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 5;
+    ctx.arc(cx, cy, R, startA, curA);
+    ctx.strokeStyle = arcGrad;
+    ctx.lineWidth = 4.5;
     ctx.lineCap = 'round';
     ctx.stroke();
   }
 
-  // Knob body
-  const bodyGrad = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx, cy, r * 0.72);
-  bodyGrad.addColorStop(0, '#2a2a2a');
+  // Knob body — subtle radial gradient
+  const bodyGrad = ctx.createRadialGradient(cx - R * 0.18, cy - R * 0.18, 0, cx, cy, R * 0.66);
+  bodyGrad.addColorStop(0, '#2c2c2c');
   bodyGrad.addColorStop(1, '#111111');
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.68, 0, Math.PI * 2);
+  ctx.arc(cx, cy, R * 0.64, 0, Math.PI * 2);
   ctx.fillStyle = bodyGrad;
   ctx.fill();
 
-  // Knob border
+  // Knob rim
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.68, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.arc(cx, cy, R * 0.64, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Indicator dot
-  const indX = cx + Math.cos(currentAngle) * r * 0.48;
-  const indY = cy + Math.sin(currentAngle) * r * 0.48;
+  // Indicator line
+  const ix = cx + Math.cos(curA) * R * 0.42;
+  const iy = cy + Math.sin(curA) * R * 0.42;
   ctx.beginPath();
-  ctx.arc(indX, indY, 3, 0, Math.PI * 2);
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(ix, iy);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Indicator dot
+  ctx.beginPath();
+  ctx.arc(ix, iy, 2.8, 0, Math.PI * 2);
   ctx.fillStyle = '#ef4444';
-  ctx.shadowBlur = 6;
-  ctx.shadowColor = 'rgba(239,68,68,0.8)';
+  ctx.shadowBlur  = 8;
+  ctx.shadowColor = 'rgba(239,68,68,0.9)';
   ctx.fill();
   ctx.shadowBlur = 0;
 }
 
 // ── Sliders ───────────────────────────────────────────────────
 function initSliders() {
-  // Speed slider already linked to knob above; still update bar fill
-  function linkSlider(id, valId, formatter, onChange) {
-    const slider = $(id);
+  function bind(sid, valId, fmt, cb) {
+    const sl  = $(sid);
     const val = $(valId);
-    if (!slider) return;
-
+    if (!sl) return;
     function update() {
-      const v = parseFloat(slider.value);
-      val.textContent = formatter(v);
-      updateSliderFill(slider);
-      onChange(v);
+      const v = parseFloat(sl.value);
+      if (val) val.textContent = fmt(v);
+      fillSlider(sl);
+      cb(v);
     }
-
-    slider.addEventListener('input', update);
-    updateSliderFill(slider);
+    sl.addEventListener('input', update);
+    fillSlider(sl);
   }
 
-  // These sliders are for EQ (not linked to knobs)
-  linkSlider('bassSlider', 'bassSliderVal', (v) => `${v >= 0 ? '+' : ''}${v} dB`, (v) => {
-    state.bass = v;
-    updateExportInfo();
+  // Apply stored values to all non-knob sliders
+  const sliderInits = {
+    bassSlider: S.bass, midSlider: S.mid, trebleSlider: S.treble,
+    reverbAmount: S.reverbAmount, echoDelay: S.echoDelay,
+    fadeInDur: S.fadeInDur, fadeOutDur: S.fadeOutDur,
+  };
+  Object.entries(sliderInits).forEach(([id, val]) => {
+    const el = $(id);
+    if (el) el.value = val;
   });
-  linkSlider('midSlider', 'midSliderVal', (v) => `${v >= 0 ? '+' : ''}${v} dB`, (v) => {
-    state.mid = v;
-    updateExportInfo();
-  });
-  linkSlider('trebleSlider', 'trebleSliderVal', (v) => `${v >= 0 ? '+' : ''}${v} dB`, (v) => {
-    state.treble = v;
-    updateExportInfo();
-  });
-  linkSlider('reverbAmount', 'reverbAmountVal', (v) => `${v}`, (v) => { state.reverbAmount = v; });
-  linkSlider('echoDelay', 'echoDelayVal', (v) => `${v}ms`, (v) => { state.echoDelay = v; });
-  linkSlider('fadeInDur', 'fadeInDurVal', (v) => `${parseFloat(v).toFixed(1)}s`, (v) => { state.fadeInDur = v; });
-  linkSlider('fadeOutDur', 'fadeOutDurVal', (v) => `${parseFloat(v).toFixed(1)}s`, (v) => { state.fadeOutDur = v; });
 
-  // Also update fill on all sliders initially
-  document.querySelectorAll('.styled-slider').forEach(updateSliderFill);
+  bind('bassSlider',   'bassSliderVal',   v => `${v>=0?'+':''}${v} dB`, v => { S.bass   = v; updateExportInfo(); saveSettings(); });
+  bind('midSlider',    'midSliderVal',    v => `${v>=0?'+':''}${v} dB`, v => { S.mid    = v; updateExportInfo(); saveSettings(); });
+  bind('trebleSlider', 'trebleSliderVal', v => `${v>=0?'+':''}${v} dB`, v => { S.treble = v; updateExportInfo(); saveSettings(); });
+  bind('reverbAmount', 'reverbAmountVal', v => `${v}`,   v => { S.reverbAmount = v; });
+  bind('echoDelay',    'echoDelayVal',    v => `${v}ms`, v => { S.echoDelay = v; });
+  bind('fadeInDur',    'fadeInDurVal',    v => `${parseFloat(v).toFixed(1)}s`, v => { S.fadeInDur  = v; });
+  bind('fadeOutDur',   'fadeOutDurVal',   v => `${parseFloat(v).toFixed(1)}s`, v => { S.fadeOutDur = v; });
+
+  // Init all slider fills (including knob-linked ones)
+  document.querySelectorAll('.styled-slider').forEach(fillSlider);
 }
 
-function updateSliderFill(slider) {
-  const min = parseFloat(slider.min);
-  const max = parseFloat(slider.max);
-  const val = parseFloat(slider.value);
+function fillSlider(sl) {
+  const min = parseFloat(sl.min);
+  const max = parseFloat(sl.max);
+  const val = parseFloat(sl.value);
   const pct = ((val - min) / (max - min)) * 100;
 
-  if (slider.classList.contains('slider-eq')) {
-    // Center-based fill for EQ sliders
+  if (sl.classList.contains('slider-eq')) {
     const center = ((0 - min) / (max - min)) * 100;
-    const left = Math.min(pct, center);
-    const right = Math.max(pct, center);
-    slider.style.background = `linear-gradient(to right, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.07) ${left}%, rgba(255,255,255,0.25) ${left}%, rgba(255,255,255,0.25) ${right}%, rgba(255,255,255,0.07) ${right}%, rgba(255,255,255,0.07) 100%)`;
+    const lo = Math.min(pct, center), hi = Math.max(pct, center);
+    sl.style.background = `linear-gradient(to right,
+      rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.07) ${lo}%,
+      rgba(255,255,255,0.28) ${lo}%, rgba(255,255,255,0.28) ${hi}%,
+      rgba(255,255,255,0.07) ${hi}%, rgba(255,255,255,0.07) 100%)`;
   } else {
-    slider.style.background = `linear-gradient(to right, rgba(185,28,28,0.8) 0%, rgba(239,68,68,0.8) ${pct}%, rgba(255,255,255,0.07) ${pct}%, rgba(255,255,255,0.07) 100%)`;
+    sl.style.background = `linear-gradient(to right,
+      rgba(176,28,28,0.85) 0%, rgba(239,68,68,0.85) ${pct}%,
+      rgba(255,255,255,0.07) ${pct}%, rgba(255,255,255,0.07) 100%)`;
   }
+}
+
+function updateVolWarning() {
+  const warning = $('volWarning');
+  if (warning) warning.classList.toggle('hidden', S.volume <= 100);
 }
 
 // ── Presets ───────────────────────────────────────────────────
 function initPresets() {
-  document.querySelectorAll('.preset-btn').forEach((btn) => {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const speed = parseFloat(btn.dataset.speed);
-      const pitch = parseFloat(btn.dataset.pitch);
-      const volume = parseFloat(btn.dataset.volume);
-      const reverb = parseInt(btn.dataset.reverb) === 1;
-      const echo = parseInt(btn.dataset.echo) === 1;
-
-      applyPreset({ speed, pitch, volume, reverb, echo });
-
-      // Animate active state
-      document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      setTimeout(() => btn.classList.remove('active'), 600);
+      applyPreset({
+        speed:  parseFloat(btn.dataset.speed),
+        pitch:  parseFloat(btn.dataset.pitch),
+        volume: parseFloat(btn.dataset.volume),
+        reverb: +btn.dataset.reverb === 1,
+        echo:   +btn.dataset.echo   === 1,
+      });
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 220);
     });
   });
 }
 
 function applyPreset({ speed, pitch, volume, reverb, echo }) {
-  // Update speed
-  setKnobValue('speedKnob', speed);
-  setKnobValue('pitchKnob', pitch);
-  setKnobValue('volumeKnob', volume);
+  S.speed  = speed;
+  S.pitch  = pitch;
+  S.volume = volume;
+  S.reverb = reverb;
+  S.echo   = echo;
 
-  // Update state
-  state.speed = speed;
-  state.pitch = pitch;
-  state.volume = volume;
+  setKnob('speedKnob',  speed,  fmtSpeed);
+  setKnob('pitchKnob',  pitch,  fmtPitch);
+  setKnob('volumeKnob', volume, fmtVol);
 
-  // Update sliders
-  const speedSlider = $('speedSlider');
-  const pitchSlider = $('pitchSlider');
-  const volumeSlider = $('volumeSlider');
+  ['speed', 'pitch', 'volume'].forEach(key => {
+    const sl = $(`${key}Slider`);
+    sl.value = S[key];
+    fillSlider(sl);
+    $(`${key}SliderVal`).textContent = ({ speed: fmtSpeed, pitch: fmtPitch, volume: fmtVol }[key])(S[key]);
+  });
 
-  speedSlider.value = speed;
-  pitchSlider.value = pitch;
-  volumeSlider.value = volume;
-
-  updateSliderFill(speedSlider);
-  updateSliderFill(pitchSlider);
-  updateSliderFill(volumeSlider);
-
-  $('speedSliderVal').textContent = formatSpeed(speed);
-  $('pitchSliderVal').textContent = formatPitch(pitch);
-  $('volumeSliderVal').textContent = formatVolume(volume);
-
-  // Effects
   $('reverbToggle').checked = reverb;
-  $('echoToggle').checked = echo;
-  state.reverb = reverb;
-  state.echo = echo;
+  $('echoToggle').checked   = echo;
+  $('reverbToggle').dispatchEvent(new Event('change'));
+  $('echoToggle').dispatchEvent(new Event('change'));
 
-  applyPreviewParams();
-  updateInfoBar({});
+  applyPreview();
+  updateVolWarning();
+  updateInfoBar();
   updateExportInfo();
+  saveSettings();
 }
 
-function setKnobValue(knobId, value) {
-  const canvas = $(knobId);
+function setKnob(cid, value, fmt) {
+  const canvas = $(cid);
   if (!canvas) return;
   const min = parseFloat(canvas.dataset.min);
   const max = parseFloat(canvas.dataset.max);
-  const clamped = clamp(value, min, max);
-  canvas.dataset.value = clamped;
-  drawKnob(canvas, clamped, min, max);
-
-  const valId = knobId.replace('Knob', 'KnobVal');
-  const el = $(valId);
-  if (el) {
-    if (knobId === 'speedKnob') el.textContent = formatSpeed(clamped);
-    else if (knobId === 'pitchKnob') el.textContent = formatPitch(clamped);
-    else if (knobId === 'volumeKnob') el.textContent = formatVolume(clamped);
-  }
+  const v = clamp(value, min, max);
+  canvas.dataset.value = v;
+  drawKnob(canvas, v, min, max);
+  const vid = cid.replace('Knob', 'KnobVal');
+  const el = $(vid);
+  if (el) el.textContent = fmt(v);
 }
 
 // ── Effects ───────────────────────────────────────────────────
 function initEffects() {
-  linkToggle('reverbToggle', 'reverbSub', (v) => { state.reverb = v; });
-  linkToggle('echoToggle', 'echoSub', (v) => { state.echo = v; });
-  linkToggle('fadeInToggle', 'fadeInSub', (v) => { state.fadeIn = v; });
-  linkToggle('fadeOutToggle', 'fadeOutSub', (v) => { state.fadeOut = v; });
-  $('normalizeToggle').addEventListener('change', (e) => { state.normalize = e.target.checked; });
-  $('monoToggle').addEventListener('change', (e) => { state.mono = e.target.checked; });
+  bindToggle('reverbToggle',   'reverbSub',   v => { S.reverb    = v; });
+  bindToggle('echoToggle',     'echoSub',     v => { S.echo      = v; });
+  bindToggle('fadeInToggle',   'fadeInSub',   v => { S.fadeIn    = v; });
+  bindToggle('fadeOutToggle',  'fadeOutSub',  v => { S.fadeOut   = v; });
+  $('normalizeToggle').addEventListener('change', e => { S.normalize = e.target.checked; });
+  $('monoToggle').addEventListener('change',      e => { S.mono      = e.target.checked; });
 }
 
-function linkToggle(toggleId, subId, onChange) {
-  const toggle = $(toggleId);
+function bindToggle(tid, subId, cb) {
+  const tog = $(tid);
   const sub = subId ? $(subId) : null;
-
-  function update() {
-    const v = toggle.checked;
-    onChange(v);
-    if (sub) {
-      if (v) {
-        sub.style.display = 'grid';
-      } else {
-        sub.style.display = 'none';
-      }
-    }
-  }
-
-  toggle.addEventListener('change', update);
-  // Init
-  if (sub) sub.style.display = toggle.checked ? 'grid' : 'none';
+  tog.addEventListener('change', () => {
+    cb(tog.checked);
+    if (sub) sub.style.display = tog.checked ? 'grid' : 'none';
+  });
+  if (sub) sub.style.display = tog.checked ? 'grid' : 'none';
 }
 
 // ── Trim ──────────────────────────────────────────────────────
 function initTrim() {
-  const trimToggle = $('trimToggle');
-  const trimControls = $('trimControls');
-  const trimStart = $('trimStart');
-  const trimEnd = $('trimEnd');
-  const trimDurVal = $('trimDurVal');
-  const trimSetPlayhead = $('trimSetPlayhead');
-  const trimSetAll = $('trimSetAll');
+  const tog = $('trimToggle');
+  const controls = $('trimControls');
+  controls.style.display = 'none';
 
-  trimToggle.addEventListener('change', () => {
-    state.trimEnabled = trimToggle.checked;
-    trimControls.style.display = trimToggle.checked ? 'block' : 'none';
-    updateInfoBar({});
+  tog.addEventListener('change', () => {
+    S.trimEnabled = tog.checked;
+    controls.style.display = tog.checked ? 'block' : 'none';
+    updateInfoBar();
     updateExportInfo();
   });
 
-  trimControls.style.display = 'none';
-
-  function updateTrimDur() {
-    const s = parseFloat(trimStart.value) || 0;
-    const e = parseFloat(trimEnd.value) || 0;
-    state.trimStart = s;
-    state.trimEnd = e;
-    if (e > s) {
-      trimDurVal.textContent = formatTime(e - s);
-    } else {
-      trimDurVal.textContent = '—';
-    }
-    updateInfoBar({});
+  function onTrimChange() {
+    S.trimStart = parseFloat($('trimStart').value) || 0;
+    S.trimEnd   = parseFloat($('trimEnd').value)   || 0;
+    const dur = S.trimEnd > S.trimStart ? S.trimEnd - S.trimStart : 0;
+    $('trimDurVal').textContent = dur ? fmtTime(dur) : '—';
+    updateInfoBar();
     updateExportInfo();
   }
 
-  trimStart.addEventListener('input', updateTrimDur);
-  trimEnd.addEventListener('input', updateTrimDur);
+  $('trimStart').addEventListener('input', onTrimChange);
+  $('trimEnd').addEventListener('input',   onTrimChange);
 
-  trimSetPlayhead.addEventListener('click', () => {
-    if (!wavesurfer || !state.wsReady) return;
-    const cur = wavesurfer.getCurrentTime().toFixed(2);
-    trimStart.value = cur;
-    state.trimStart = parseFloat(cur);
-    updateTrimDur();
+  $('trimSetPlayhead').addEventListener('click', () => {
+    if (!wavesurfer || !S.wsReady) return;
+    $('trimStart').value = wavesurfer.getCurrentTime().toFixed(2);
+    onTrimChange();
   });
 
-  trimSetAll.addEventListener('click', () => {
-    trimStart.value = '0';
-    trimEnd.value = state.duration.toFixed(2);
-    state.trimStart = 0;
-    state.trimEnd = state.duration;
-    updateTrimDur();
+  $('trimSetAll').addEventListener('click', () => {
+    $('trimStart').value = '0';
+    $('trimEnd').value   = S.duration.toFixed(2);
+    onTrimChange();
   });
 }
 
 function updateTrimEnd() {
-  const trimEnd = $('trimEnd');
-  if (trimEnd && state.duration) {
-    trimEnd.value = state.duration.toFixed(2);
-    trimEnd.max = state.duration;
-    state.trimEnd = state.duration;
-    $('trimStart').max = state.duration;
+  const el = $('trimEnd');
+  if (el && S.duration) {
+    el.value = S.duration.toFixed(2);
+    S.trimEnd = S.duration;
+    $('trimDurVal').textContent = fmtTime(S.duration);
   }
 }
 
 // ── Export ────────────────────────────────────────────────────
 function initExport() {
   // Format buttons
-  document.querySelectorAll('.format-btn').forEach((btn) => {
+  document.querySelectorAll('.format-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.format-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      state.exportFormat = btn.dataset.format;
-      updateQualityVisibility();
+      S.exportFormat = btn.dataset.format;
+      ['mp3','ogg','wav','flac'].forEach(f => {
+        const row = $(`${f}Quality`);
+        if (row) row.classList.toggle('hidden', f !== S.exportFormat);
+      });
       updateExportInfo();
+      saveSettings();
     });
+    // Set initial active state from loaded settings
+    if (btn.dataset.format === S.exportFormat) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
   });
 
-  // Quality buttons per format
-  document.querySelectorAll('.quality-btn').forEach((btn) => {
+  // Sync format quality panel visibility
+  ['mp3','ogg','wav','flac'].forEach(f => {
+    const row = $(`${f}Quality`);
+    if (row) row.classList.toggle('hidden', f !== S.exportFormat);
+  });
+
+  // Quality buttons
+  document.querySelectorAll('.quality-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const row = btn.closest('.quality-row');
-      row.querySelectorAll('.quality-btn').forEach((b) => b.classList.remove('active'));
+      row.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const format = row.id.replace('Quality', '');
-      state.exportQuality[format] = btn.dataset.quality;
+      const fmt = row.id.replace('Quality', '');
+      S.exportQuality[fmt] = btn.dataset.quality;
       updateExportInfo();
+      saveSettings();
     });
   });
 
   $('exportBtn').addEventListener('click', exportAudio);
-  updateQualityVisibility();
-}
-
-function updateQualityVisibility() {
-  const formats = ['mp3', 'ogg', 'wav', 'flac'];
-  formats.forEach((f) => {
-    const row = $(`${f}Quality`);
-    if (row) {
-      row.classList.toggle('hidden', f !== state.exportFormat);
-    }
-  });
+  updateExportInfo();
 }
 
 function updateExportInfo() {
   const el = $('exportInfoText');
   if (!el) return;
-  const dur = computeProcessedDuration();
+  const dur = calcProcDur();
   const parts = [];
-  if (state.exportFormat === 'mp3') parts.push(`MP3 ${state.exportQuality.mp3}`);
-  else if (state.exportFormat === 'ogg') parts.push(`OGG Q${state.exportQuality.ogg}`);
-  else if (state.exportFormat === 'wav') parts.push(`WAV ${state.exportQuality.wav}`);
-  else if (state.exportFormat === 'flac') parts.push(`FLAC Level ${state.exportQuality.flac}`);
-
-  if (state.speed !== 1) parts.push(`Speed: ${formatSpeed(state.speed)}`);
-  if (state.pitch !== 0) parts.push(`Pitch: ${formatPitch(state.pitch)}`);
-  if (state.volume !== 100) parts.push(`Volume: ${formatVolume(state.volume)}`);
-  if (dur) parts.push(`Output: ${formatTime(dur)}`);
-
-  el.textContent = parts.join(' · ') || 'Select a file and configure settings above';
+  const fmtNames = { mp3: `MP3 ${S.exportQuality.mp3}`, ogg: `OGG Q${S.exportQuality.ogg}`, wav: `WAV ${S.exportQuality.wav}`, flac: `FLAC Level ${S.exportQuality.flac}` };
+  parts.push(fmtNames[S.exportFormat] || S.exportFormat.toUpperCase());
+  if (S.speed !== 1)   parts.push(`Speed: ${fmtSpeed(S.speed)}`);
+  if (S.pitch !== 0)   parts.push(`Pitch: ${fmtPitch(S.pitch)}`);
+  if (S.volume !== 100) parts.push(`Volume: ${fmtVol(S.volume)}`);
+  if (S.volume > 100)  parts.push('Limiter: ON');
+  if (dur)             parts.push(`Output: ~${fmtTime(dur)}`);
+  el.textContent = parts.join('  ·  ');
 }
 
 async function exportAudio() {
-  if (!state.ffmpegReady || !state.files[state.activeIndex]) {
-    if (!state.ffmpegReady) {
-      alert('FFmpeg is not ready. Please wait or refresh the page.\n\nNote: This site requires serving over HTTP(S) with a service worker for FFmpeg to function. Open index.html from a local HTTP server (e.g., python -m http.server) or host it online.');
-    }
+  if (!S.ffmpegReady) {
+    alert('FFmpeg is not ready.\n\nIf you\'re on GitHub Pages or a static host, the service worker (sw.js) needs one page reload to activate.\n\nSteps:\n1. Make sure sw.js is in the same folder as index.html\n2. Reload the page (the SW activates after first load)\n3. Try exporting again\n\nIf serving locally, use a local HTTP server — not file:// protocol.');
     return;
   }
+  const file = S.files[S.activeIndex];
+  if (!file) return;
 
-  const file = state.files[state.activeIndex];
-  const format = state.exportFormat;
-  const outputName = `soniq_${getBaseName(file.name)}.${format}`;
+  const fmt = S.exportFormat;
+  const outName = `soniq_${baseName(file.name)}.${fmt}`;
 
-  showProcessing(`Exporting as ${format.toUpperCase()}...`, 'Building FFmpeg filter chain');
+  showOverlay(`Exporting as ${fmt.toUpperCase()}…`, 'Building FFmpeg filter chain…');
 
   try {
-    // Write input
-    const inputExt = getFileExt(file.name) || 'mp3';
+    const inputExt  = ext(file.name) || 'mp3';
     const inputName = `input.${inputExt}`;
-    const fileData = await fetchFileFn(file);
-    await ffmpeg.writeFile(inputName, fileData);
+    await ffmpeg.writeFile(inputName, await fetchFileFn(file));
 
-    // Build filter chain
-    const filters = buildFilterChain();
-    const args = buildFFmpegArgs(inputName, outputName, filters);
+    const filters = buildFilters();
+    const args    = buildArgs(inputName, outName, filters);
 
-    ffmpegProgressDuration = computeProcessedDuration() || state.duration;
-    setProcessingProgress(5);
+    ffmpegProgressDuration = calcProcDur() || S.duration;
+    setProgress(5);
 
     await ffmpeg.exec(args);
 
-    setProcessingProgress(90);
-    $('processingSub').textContent = 'Reading output file...';
+    setProgress(92);
+    $('processingSub').textContent = 'Reading output…';
 
-    const outputData = await ffmpeg.readFile(outputName);
-    const mimeTypes = {
-      mp3: 'audio/mpeg',
-      ogg: 'audio/ogg',
-      wav: 'audio/wav',
-      flac: 'audio/flac',
-    };
-    const blob = new Blob([outputData.buffer], { type: mimeTypes[format] || 'audio/mpeg' });
+    const data = await ffmpeg.readFile(outName);
+    const mime = { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', flac: 'audio/flac' }[fmt] || 'audio/mpeg';
+    const blob = new Blob([data.buffer], { type: mime });
 
-    // Download
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = outputName;
+    const a   = Object.assign(document.createElement('a'), { href: url, download: outName });
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
 
-    setProcessingProgress(100);
-
-    // Cleanup
-    try { await ffmpeg.deleteFile(inputName); } catch (e) {}
-    try { await ffmpeg.deleteFile(outputName); } catch (e) {}
-
-    setTimeout(hideProcessing, 600);
+    setProgress(100);
+    try { await ffmpeg.deleteFile(inputName); } catch (_) {}
+    try { await ffmpeg.deleteFile(outName);   } catch (_) {}
+    setTimeout(hideOverlay, 700);
   } catch (err) {
-    console.error('Export error:', err);
-    hideProcessing();
-    alert(`Export failed: ${err.message || err}\n\nCheck the browser console for details.`);
+    console.error('[SONIQ] Export error:', err);
+    hideOverlay();
+    alert(`Export failed:\n${err.message || err}`);
   }
 }
 
-function buildFilterChain() {
-  const filters = [];
+/* ── FFmpeg Filter Chain ─────────────────────────────────────── */
+function buildFilters() {
+  const sr = S.sampleRate || 44100;
+  const inner = [];
 
-  // Trim (via atrim before other effects)
-  if (state.trimEnabled && state.trimEnd > state.trimStart) {
-    filters.push(`atrim=start=${state.trimStart}:end=${state.trimEnd}`);
-    filters.push('asetpts=PTS-STARTPTS');
-  }
-
-  // Pitch shift (asetrate changes sample rate → pitch change, aresample brings it back)
-  const sr = state.sampleRate || 44100;
-  if (state.pitch !== 0) {
-    const pitchFactor = Math.pow(2, state.pitch / 12);
-    const newSampleRate = Math.round(sr * pitchFactor);
-    filters.push(`asetrate=${newSampleRate}`);
-    filters.push(`aresample=${sr}`);
+  // Trim
+  if (S.trimEnabled && S.trimEnd > S.trimStart) {
+    inner.push(`atrim=start=${S.trimStart}:end=${S.trimEnd}`);
+    inner.push('asetpts=PTS-STARTPTS');
   }
 
-  // Speed (atempo - handles values by chaining if out of 0.5-2.0 range)
-  if (state.speed !== 1) {
-    const atempoFilters = buildAtempoChain(state.speed);
-    filters.push(...atempoFilters);
+  // Pitch (asetrate changes the "source" sample rate → shifts pitch)
+  if (S.pitch !== 0) {
+    const newSR = Math.round(sr * Math.pow(2, S.pitch / 12));
+    inner.push(`asetrate=${newSR}`);
+    inner.push(`aresample=${sr}:resampler=swr:precision=28`);
   }
 
-  // Volume
-  if (state.volume !== 100) {
-    filters.push(`volume=${(state.volume / 100).toFixed(4)}`);
+  // Speed / Tempo
+  if (Math.abs(S.speed - 1) > 0.001) {
+    atempoChain(S.speed).forEach(s => inner.push(s));
   }
 
-  // EQ - Bass (100Hz), Mid (1kHz), Treble (8kHz)
-  if (state.bass !== 0) {
-    filters.push(`equalizer=f=100:width_type=o:width=2:g=${state.bass}`);
-  }
-  if (state.mid !== 0) {
-    filters.push(`equalizer=f=1000:width_type=o:width=2:g=${state.mid}`);
-  }
-  if (state.treble !== 0) {
-    filters.push(`equalizer=f=8000:width_type=o:width=2:g=${state.treble}`);
+  // Volume — with hard limiter above 100% to prevent clipping
+  if (S.volume !== 100) {
+    inner.push(`volume=${(S.volume / 100).toFixed(4)}`);
+    if (S.volume > 100) {
+      inner.push('alimiter=level_in=1:level_out=1:limit=1:attack=7:release=50:asc=1');
+    }
   }
 
-  // Reverb (approximated with aecho)
-  if (state.reverb) {
-    const intensity = Math.min(state.reverbAmount / 10, 0.9);
-    const delays = [60, 120, 200].map(d => d + Math.round(intensity * 100));
-    const decays = [0.4, 0.3, 0.2].map(d => d + intensity * 0.3);
-    filters.push(`aecho=0.8:0.88:${delays[0]}|${delays[1]}|${delays[2]}:${decays[0].toFixed(2)}|${decays[1].toFixed(2)}|${decays[2].toFixed(2)}`);
+  // EQ — 3-band parametric equalizer
+  if (S.bass   !== 0) inner.push(`equalizer=f=100:width_type=o:width=2:g=${S.bass}`);
+  if (S.mid    !== 0) inner.push(`equalizer=f=1000:width_type=o:width=2:g=${S.mid}`);
+  if (S.treble !== 0) inner.push(`equalizer=f=8000:width_type=o:width=2:g=${S.treble}`);
+
+  // Reverb (multi-tap echo approximation)
+  if (S.reverb) {
+    const intensity = Math.min(S.reverbAmount / 10, 0.9);
+    const d  = [60, 120, 200].map(n => n + Math.round(intensity * 100));
+    const dc = [0.4, 0.3, 0.2].map(n => +(n + intensity * 0.3).toFixed(2));
+    inner.push(`aecho=0.8:0.88:${d[0]}|${d[1]}|${d[2]}:${dc[0]}|${dc[1]}|${dc[2]}`);
   }
 
   // Echo / Delay
-  if (state.echo) {
-    const echoMs = state.echoDelay;
-    filters.push(`aecho=0.7:0.85:${echoMs}:0.5`);
+  if (S.echo) inner.push(`aecho=0.7:0.85:${S.echoDelay}:0.5`);
+
+  // Dynamic normalization
+  if (S.normalize) inner.push('dynaudnorm=p=0.95:m=30');
+
+  // Fade in/out
+  if (S.fadeIn  && S.fadeInDur  > 0) inner.push(`afade=t=in:ss=0:d=${S.fadeInDur}`);
+  if (S.fadeOut && S.fadeOutDur > 0) {
+    const start = Math.max(0, calcProcDur() - S.fadeOutDur);
+    inner.push(`afade=t=out:st=${start.toFixed(2)}:d=${S.fadeOutDur}`);
   }
 
-  // Normalize
-  if (state.normalize) {
-    filters.push('dynaudnorm=p=0.95:m=30');
-  }
+  // Stereo → Mono
+  if (S.mono) inner.push('pan=mono|c0=0.5*c0+0.5*c1');
 
-  // Fade In
-  if (state.fadeIn && state.fadeInDur > 0) {
-    filters.push(`afade=t=in:ss=0:d=${state.fadeInDur}`);
-  }
+  // Wrap with float precision + quality resample when doing any processing
+  if (inner.length === 0) return [];
 
-  // Fade Out
-  if (state.fadeOut && state.fadeOutDur > 0 && state.duration > 0) {
-    const procDur = computeProcessedDuration();
-    const fadeStart = Math.max(0, procDur - state.fadeOutDur);
-    filters.push(`afade=t=out:st=${fadeStart.toFixed(2)}:d=${state.fadeOutDur}`);
-  }
+  const needsResample = S.pitch !== 0;
+  const out = ['aformat=sample_fmts=fltp', ...inner];
 
-  // Mono mix
-  if (state.mono) {
-    filters.push('pan=mono|c0=0.5*c0+0.5*c1');
-  }
+  // Final resample only if not already done by pitch shift step
+  if (!needsResample) out.push(`aresample=${sr}:resampler=swr:precision=28`);
 
-  return filters;
+  return out;
 }
 
-function buildAtempoChain(speed) {
+function atempoChain(speed) {
   const filters = [];
   let s = speed;
   if (s < 0.5) {
-    while (s < 0.5) {
-      filters.push('atempo=0.5');
-      s /= 0.5;
-    }
+    while (s < 0.5) { filters.push('atempo=0.5'); s /= 0.5; }
     if (Math.abs(s - 1) > 0.001) filters.push(`atempo=${s.toFixed(6)}`);
-  } else if (s > 2.0) {
-    while (s > 2.0) {
-      filters.push('atempo=2.0');
-      s /= 2.0;
-    }
+  } else if (s > 2) {
+    while (s > 2) { filters.push('atempo=2.0'); s /= 2; }
     if (Math.abs(s - 1) > 0.001) filters.push(`atempo=${s.toFixed(6)}`);
   } else {
     filters.push(`atempo=${s.toFixed(6)}`);
@@ -1242,126 +1094,72 @@ function buildAtempoChain(speed) {
   return filters;
 }
 
-function buildFFmpegArgs(inputName, outputName, filters) {
+function buildArgs(inputName, outName, filters) {
   const args = ['-i', inputName];
-
-  // Add filter chain if any
-  if (filters.length > 0) {
-    args.push('-af', filters.join(','));
-  }
-
-  // Format-specific codec args
-  const fmt = state.exportFormat;
-  if (fmt === 'mp3') {
-    args.push('-c:a', 'libmp3lame', '-b:a', state.exportQuality.mp3);
-    args.push('-ar', String(state.sampleRate || 44100));
-  } else if (fmt === 'ogg') {
-    args.push('-c:a', 'libvorbis', '-q:a', state.exportQuality.ogg);
-  } else if (fmt === 'wav') {
-    args.push('-c:a', state.exportQuality.wav);
-  } else if (fmt === 'flac') {
-    args.push('-c:a', 'flac', '-compression_level', state.exportQuality.flac);
-  }
-
-  args.push('-y', outputName);
+  if (filters.length) args.push('-af', filters.join(','));
+  const fmt = S.exportFormat;
+  const q   = S.exportQuality;
+  if (fmt === 'mp3')  args.push('-c:a', 'libmp3lame',  '-b:a', q.mp3, '-ar', String(S.sampleRate || 44100));
+  if (fmt === 'ogg')  args.push('-c:a', 'libvorbis',   '-q:a', q.ogg);
+  if (fmt === 'wav')  args.push('-c:a', q.wav);
+  if (fmt === 'flac') args.push('-c:a', 'flac', '-compression_level', q.flac);
+  args.push('-y', outName);
   return args;
 }
 
-// ── Processing Overlay ────────────────────────────────────────
-function showProcessing(label, sub) {
+/* ── Overlay ─────────────────────────────────────────────────── */
+function showOverlay(label, sub) {
   $('processingLabel').textContent = label;
-  $('processingSub').textContent = sub;
-  setProcessingProgress(0);
+  $('processingSub').textContent   = sub;
+  setProgress(0);
   $('processingOverlay').classList.remove('hidden');
 }
 
-function hideProcessing() {
-  $('processingOverlay').classList.add('hidden');
+function hideOverlay() { $('processingOverlay').classList.add('hidden'); }
+
+function setProgress(pct) { $('processingBar').style.width = `${pct}%`; }
+
+/* ── Utilities ─────────────────────────────────────────────────── */
+function fmtTime(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
-function setProcessingProgress(pct) {
-  $('processingBar').style.width = `${pct}%`;
+function fmtBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return `${b} B`;
+  if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+  return `${(b/1048576).toFixed(1)} MB`;
 }
 
-// ── UI helpers ────────────────────────────────────────────────
-function show(el) {
-  if (el) el.classList.remove('hidden');
+function fmtSpeed(v) { return `${parseFloat(v).toFixed(2)}x`; }
+function fmtPitch(v) { const n = parseFloat(v); return `${n>=0?'+':''}${n.toFixed(1)} st`; }
+function fmtVol(v)   { return `${Math.round(v)}%`; }
+
+function truncate(s, max) {
+  if (s.length <= max) return s;
+  const e = ext(s);
+  return s.slice(0, max - e.length - 4) + '…' + (e ? `.${e}` : '');
 }
 
-function hide(el) {
-  if (el) el.classList.add('hidden');
-}
+function ext(name)      { const p = name.split('.'); return p.length > 1 ? p[p.length-1].toLowerCase() : ''; }
+function baseName(name) { const p = name.split('.'); return p.slice(0, -1).join('.') || name; }
+function esc(s)         { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+function snap(v, step)  { return Math.round(v / step) * step; }
 
-function formatTime(sec) {
-  if (!sec || isNaN(sec)) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatBytes(bytes) {
-  if (!bytes) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatSpeed(v) {
-  return `${parseFloat(v).toFixed(2)}x`;
-}
-
-function formatPitch(v) {
-  const n = parseFloat(v);
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)} st`;
-}
-
-function formatVolume(v) {
-  return `${Math.round(v)}%`;
-}
-
-function truncateName(name, max = 22) {
-  if (name.length <= max) return name;
-  const ext = getFileExt(name);
-  const base = name.slice(0, name.length - ext.length - 1);
-  return base.slice(0, max - ext.length - 4) + '...' + (ext ? `.${ext}` : '');
-}
-
-function getFileExt(name) {
-  const parts = name.split('.');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
-}
-
-function getBaseName(name) {
-  const parts = name.split('.');
-  return parts.slice(0, -1).join('.') || name;
-}
-
-function esc(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function clamp(v, min, max) {
-  return Math.min(max, Math.max(min, v));
-}
-
-function snapToStep(v, step) {
-  return Math.round(v / step) * step;
-}
-
-// ── Window resize — redraw ruler & spectrum ───────────────────
+/* ── Resize ────────────────────────────────────────────────────── */
 window.addEventListener('resize', debounce(() => {
-  if (state.wsReady) renderRuler();
-  const canvas = $('spectrumCanvas');
-  if (canvas) {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+  if (S.wsReady) renderRuler();
+  const c = $('spectrumCanvas');
+  if (c && c.parentElement) {
+    c.width  = c.parentElement.offsetWidth;
+    c.height = c.parentElement.offsetHeight;
   }
-}, 150));
+}, 160));
 
-function debounce(fn, delay) {
+function debounce(fn, ms) {
   let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), delay);
-  };
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
