@@ -184,12 +184,10 @@ body {
     linear-gradient(180deg, #08080a 0%, #0a0a0d 100%);
   padding-bottom: 0;
   padding-top: 0;
-  transition: padding-bottom var(--d-slow) var(--ease-out), padding-top var(--d-slow) var(--ease-out);
 }
 
 body.has-player {
-  padding-bottom: calc(var(--player-h) + var(--gap));
-  padding-top: calc(var(--topbar-h) + var(--gap));
+  padding-bottom: calc(var(--player-h) + var(--gap) + var(--topbar-h) + var(--gap));
 }
 
 input  { font: inherit; color: inherit; }
@@ -250,10 +248,11 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   z-index: 14;
   pointer-events: none;
   background: rgb(0 0 0 / 0%);
-  transition: background var(--d-slow) var(--ease-out), backdrop-filter var(--d-slow) var(--ease-out), -webkit-backdrop-filter var(--d-slow) var(--ease-out);
+  transition: background var(--d-slow) var(--ease-in-out);
 }
 
 .blur-layer.show {
+  transition: background var(--d-slow) var(--ease-out);
   background: rgb(0 0 0 / 28%);
   
 }
@@ -480,7 +479,11 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   pointer-events: none;
   opacity: 0;
   transform: translateX(-20px) scale(0.98);
-  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out);
+  transition:
+    opacity var(--d-slow) var(--ease-in-out),
+    transform var(--d-slow) var(--ease-in-out),
+    left var(--d-slow) var(--ease-in-out),
+    right var(--d-slow) var(--ease-in-out);
 }
 
 .sidebar.open {
@@ -1105,15 +1108,16 @@ button {
   flex-direction: column;
   transition:
     padding var(--d-slow) var(--ease-out),
-    opacity var(--d-slow) var(--ease-soft),
-    filter    var(--d-slow) var(--ease-soft);
+    opacity var(--d-slow) var(--ease-soft), transform var(--d-slow) var(--ease-in-out);
+ ;
 }
 
 body.has-player .stage {
   opacity: 0.18;
-  filter: saturate(0.5);
+  
   pointer-events: none;
   user-select: none;
+  transform: translateY(calc(var(--topbar-h) + var(--gap)));
 }
 
 .brand {
@@ -1182,11 +1186,12 @@ body.has-player .brand { opacity: 0.35; }
   opacity: 0;
   transform: translateY(-16px);
   pointer-events: none;
-  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out);
+  transition: opacity var(--d-slow) var(--ease-in-out), transform var(--d-slow) var(--ease-in-out), left var(--d-slow) var(--ease-in-out), right var(--d-slow) var(--ease-in-out);
 }
 
 .topbar.shifted {
-  transform: translateX(calc(var(--sidebar-w) + 24px));
+  left: calc(var(--gap) + var(--rail-w) + 12px + var(--sidebar-w) + 12px);
+  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out), left var(--d-slow) var(--ease-out), right var(--d-slow) var(--ease-out);
 }
 
 .topbar.show {
@@ -1307,12 +1312,21 @@ body.has-player .brand { opacity: 0.35; }
   opacity: 0;
   transform: translateY(24px) scale(0.98);
   pointer-events: none;
-  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out);
+  transition:
+    opacity var(--d-slow) var(--ease-in-out),
+    transform var(--d-slow) var(--ease-in-out),
+    left var(--d-slow) var(--ease-in-out),
+    right var(--d-slow) var(--ease-in-out);
   overflow: visible;
 }
 
 .player.shifted {
-  transform: translateX(calc(var(--sidebar-w) + 24px));
+  left: calc(var(--gap) + var(--rail-w) + 12px + var(--sidebar-w) + 12px);
+  transition:
+    opacity var(--d-slow) var(--ease-out),
+    transform var(--d-slow) var(--ease-out),
+    left var(--d-slow) var(--ease-out),
+    right var(--d-slow) var(--ease-out);
 }
 
 .player::before {
@@ -1699,12 +1713,12 @@ body.has-player .toast-container {
   max-width: 90vw;
   font-family: var(--font-display);
   font-weight: 500;
-  transform: translateY(20px);
-  transition: opacity var(--d-mid) var(--ease-soft), transform var(--d-mid) var(--ease-out), margin var(--d-mid) var(--ease-out), max-height var(--d-mid) var(--ease-out), padding var(--d-mid) var(--ease-out), border var(--d-mid) var(--ease-out);
+  transform: translateY(12px) scale(0.95);
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out), margin 400ms var(--ease-out), max-height 400ms var(--ease-out), padding 400ms var(--ease-out), border 400ms var(--ease-out);
   max-height: 50px;
 }
-.toast.show { opacity: 1; transform: translateY(0); }
-.toast.removing { opacity: 0; transform: translateY(-20px) scale(0.9); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: -8px; border-width: 0; overflow: hidden; }
+.toast.show { opacity: 1; transform: translateY(0) scale(1); }
+.toast.removing { opacity: 0; transform: translateY(-12px) scale(0.95); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: -8px; border-width: 0; overflow: hidden; }
 
 .toast-dot {
   width: 8px; height: 8px; border-radius: 50%;
