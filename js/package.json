@@ -1,0 +1,10 @@
+{
+  "name": "static-site",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "mkdir -p dist && cp -r index.html style.css script.js fonts.css fonts js _headers netlify.toml dist/"
+  },
+  "devDependencies": {
+    "vite": "^6.2.3"
+  }
+}
