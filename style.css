@@ -1182,15 +1182,11 @@ body.has-player .brand { opacity: 0.35; }
   opacity: 0;
   transform: translateY(-16px);
   pointer-events: none;
-  transition:
-    opacity var(--d-slow) var(--ease-out),
-    transform var(--d-slow) var(--ease-out),
-    left var(--d-slow) var(--ease-out),
-    right var(--d-slow) var(--ease-out);
+  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out);
 }
 
 .topbar.shifted {
-  left: calc(var(--gap) + var(--rail-w) + 12px + var(--sidebar-w) + 12px);
+  transform: translateX(calc(var(--sidebar-w) + 24px));
 }
 
 .topbar.show {
@@ -1311,16 +1307,12 @@ body.has-player .brand { opacity: 0.35; }
   opacity: 0;
   transform: translateY(24px) scale(0.98);
   pointer-events: none;
-  transition:
-    opacity var(--d-slow) var(--ease-out),
-    transform var(--d-slow) var(--ease-out),
-    left var(--d-slow) var(--ease-out),
-    right var(--d-slow) var(--ease-out);
+  transition: opacity var(--d-slow) var(--ease-out), transform var(--d-slow) var(--ease-out);
   overflow: visible;
 }
 
 .player.shifted {
-  left: calc(var(--gap) + var(--rail-w) + 12px + var(--sidebar-w) + 12px);
+  transform: translateX(calc(var(--sidebar-w) + 24px));
 }
 
 .player::before {
