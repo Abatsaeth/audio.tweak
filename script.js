@@ -1057,8 +1057,9 @@
           tEnd.classList.remove('hidden');
           return;
         }
-        const overlapStart = pct < 0.12;
-        const overlapEnd   = pct > 0.88;
+        const x = pct * trackWidth;
+        const overlapStart = x < 48;
+        const overlapEnd   = x > trackWidth - 48;
         tStart.classList.toggle('hidden', overlapStart);
         tEnd.classList.toggle('hidden',   overlapEnd);
       }
