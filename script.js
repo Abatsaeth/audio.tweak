@@ -374,6 +374,8 @@
     const library = $('.library');
     const libraryScrollbar = $('#libraryScrollbar');
     const libraryScrollbarThumb = $('#libraryScrollbarThumb');
+    
+    let isDraggingScroll = false;
 
     function updateScrollbar() {
       if (!libraryScrollbar || !libraryScrollbarThumb || !soundList) return;
@@ -392,6 +394,14 @@
       } else {
         soundList.classList.remove('has-scroll');
         libraryScrollbar.classList.remove('active');
+        if (isDraggingScroll) {
+          isDraggingScroll = false;
+          libraryScrollbarThumb.classList.remove('dragging');
+          if (library) library.classList.remove('is-dragging');
+          if (document.body.getAttribute('data-cursor') === 'grabbing') {
+            document.body.removeAttribute('data-cursor');
+          }
+        }
       }
     }
 
@@ -405,7 +415,6 @@
     }
 
     if (libraryScrollbarThumb) {
-      let isDraggingScroll = false;
       let scrollStartY = 0;
       let scrollStartTop = 0;
 
@@ -1042,32 +1051,35 @@
         label.style.transform = `translate(-50%, -50%) translateX(${p * trackWidth}px)`;
       }
 
-      function smartHide() {
+      function smartHide(pct) {
         if (!duration) {
           tStart.classList.remove('hidden');
           tEnd.classList.remove('hidden');
           return;
         }
-        const labelRect = label.getBoundingClientRect();
-        const startRect = tStart.getBoundingClientRect();
-        const endRect   = tEnd.getBoundingClientRect();
-        const labelCenterX = labelRect.left + labelRect.width / 2;
-        const startCenterX = startRect.left + startRect.width / 2;
-        const endCenterX   = endRect.left + endRect.width / 2;
-        const overlapStart = Math.abs(labelCenterX - startCenterX) < (labelRect.width / 2 + startRect.width / 2 + 4);
-        const overlapEnd   = Math.abs(labelCenterX - endCenterX)   < (labelRect.width / 2 + endRect.width / 2 + 4);
+        const overlapStart = pct < 0.12;
+        const overlapEnd   = pct > 0.88;
         tStart.classList.toggle('hidden', overlapStart);
         tEnd.classList.toggle('hidden',   overlapEnd);
       }
 
+      let lastDur = -1;
+      let lastTimeFmt = '';
       function update(currentTime, dur) {
         if (isFinite(dur) && dur > 0) duration = dur;
-        tEnd.textContent = fmt(duration);
-        tStart.textContent = '0:00';
-        label.textContent = fmt(currentTime);
-        if (duration > 0) setProgress(currentTime / duration);
-        else              setProgress(0);
-        requestAnimationFrame(smartHide);
+        if (duration !== lastDur) {
+          tEnd.textContent = fmt(duration);
+          tStart.textContent = '0:00';
+          lastDur = duration;
+        }
+        const timeFmt = fmt(currentTime);
+        if (timeFmt !== lastTimeFmt) {
+          label.textContent = timeFmt;
+          lastTimeFmt = timeFmt;
+        }
+        const pct = duration > 0 ? currentTime / duration : 0;
+        setProgress(pct);
+        smartHide(pct);
       }
 
       function setPlayState(playing) {
@@ -1139,9 +1151,13 @@
         const p = pctFromEvent(e);
         if (duration > 0) {
           const t = p * duration;
-          label.textContent = fmt(t);
+          const timeFmt = fmt(t);
+          if (timeFmt !== lastTimeFmt) {
+            label.textContent = timeFmt;
+            lastTimeFmt = timeFmt;
+          }
           setProgress(p);
-          requestAnimationFrame(smartHide);
+          smartHide(p);
         }
         return p * (duration || 0);
       }
