@@ -153,6 +153,7 @@ body[data-cursor="text"] .cursor-shape::after {
   --font-mono:    "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 
   --gap:          18px;
+  --glass:        blur(8px);
 }
 
 /* =====================================================================
