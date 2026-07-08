@@ -725,7 +725,7 @@
       audio = new Audio();
       audio.preload = 'auto';
       audio.addEventListener('timeupdate', () => {
-        if (audio && !isProgressDragging) {
+        if (audio && !isProgressDragging && audio.paused) {
           player.update(audio.currentTime, audio.duration || 0);
         }
       });
@@ -1058,8 +1058,8 @@
           return;
         }
         const x = pct * trackWidth;
-        const overlapStart = x < 48;
-        const overlapEnd   = x > trackWidth - 48;
+        const overlapStart = x < 32;
+        const overlapEnd   = x > trackWidth - 32;
         tStart.classList.toggle('hidden', overlapStart);
         tEnd.classList.toggle('hidden',   overlapEnd);
       }
@@ -1138,6 +1138,14 @@
         } else {
           const next = (repeatMode + 1) % 3;
           setRepeat(next);
+        }
+        if (audio && (audio.ended || (audio.paused && duration > 0 && Math.abs(audio.currentTime - duration) < 0.5))) {
+          if (repeatMode === REPEAT_ONE) {
+            audio.currentTime = 0;
+            playCurrent();
+          } else if (repeatMode === REPEAT_ALL) {
+            nextTrack();
+          }
         }
       });
       setRepeat(REPEAT_OFF);
