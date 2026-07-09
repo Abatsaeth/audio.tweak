@@ -593,6 +593,82 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   font-weight: 500;
 }
 
+.searchbar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-right: 12px;
+  height: 24px;
+  cursor: text;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.searchbar-wrap:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.searchbar-wrap.is-focused {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.searchbar-icon {
+  position: absolute;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  color: var(--text-mute);
+  pointer-events: none;
+}
+
+.searchbar-sep {
+  position: absolute;
+  left: 28px;
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+  pointer-events: none;
+}
+
+.searchbar-placeholder {
+  position: absolute;
+  left: 36px;
+  color: var(--text-mute);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.searchbar-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-base);
+  font-family: var(--font-body);
+  font-size: 11px;
+  padding-left: 36px;
+  padding-right: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.searchbar-wrap.is-focused .searchbar-placeholder {
+  opacity: 0;
+}
+
+.searchbar-wrap:not(.is-focused).has-text .searchbar-placeholder {
+  opacity: 0;
+}
+
 .meta-right {
   display: flex;
   align-items: center;
@@ -600,11 +676,46 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   letter-spacing: 0.2em;
 }
 
+.sort-btn-standalone {
+  color: var(--text-soft);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+}
+.sort-btn-standalone:hover { color: #fff; }
+
+.icon-transition-wrap {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+.transition-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.transition-icon.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .library-count {
   color: var(--text-soft);
   background: rgb(255 255 255 / 5%);
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: 6px;
   letter-spacing: 0.1em;
 }
 
@@ -634,6 +745,9 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   font-weight: 500;
   cursor: pointer;
   transition: color 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .sort-btn-main:hover { color: #fff; }
 
@@ -656,11 +770,14 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  width: 120px;
+  width: 140px;
   background: rgb(20 20 26 / 95%);
   border: 1px solid var(--hairline-2);
   border-radius: 8px;
   padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
   z-index: 100;
   display: flex;
@@ -679,7 +796,16 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   pointer-events: auto;
 }
 
+.sort-item-sep {
+  width: 1px;
+  height: 10px;
+  background: var(--hairline);
+}
+
 .sort-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   text-align: left;
   padding: 8px 10px;
   font-size: 11px;
@@ -709,6 +835,7 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   font-family: var(--font-body);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  border-radius: 6px;
   transition: background var(--d-mid) var(--ease-soft), color var(--d-mid) var(--ease-soft), border-color var(--d-mid) var(--ease-soft);
 }
 

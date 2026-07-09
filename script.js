@@ -47,6 +47,10 @@
   const SORT_LABELS = { name: 'A-Z', type: 'File Type', size: 'Size', duration: 'Duration' };
   let currentSortIdx = 0;
   let isAscending = true;
+  let searchQuery = '';
+  let searchTimeout = null;
+
+  // DOM elements (add new ones here if needed)
 
   // -------- Icons (inline SVG, no emojis, no external requests) --------
   const ICONS = {
@@ -229,13 +233,17 @@
     const headClose       = $('#headClose');
     const soundList       = $('#soundList');
     const libraryCount    = $('#libraryCount');
-    const orderBtnMain    = $('#orderBtnMain');
-    const orderBtnDrop    = $('#orderBtnDrop');
-    const orderMenu       = $('#orderMenu');
+    const orderBtnToggle  = $('#orderBtnToggle');
+    const iconAsc         = $('#iconAsc');
+    const iconDesc        = $('#iconDesc');
     const sortBtnMain     = $('#sortBtnMain');
+    const sortBtnMainIconWrap = $('#sortBtnMainIconWrap');
     const sortBtnDrop     = $('#sortBtnDrop');
     const sortMenu        = $('#sortMenu');
     const emptyState      = $('#emptyState');
+    const searchEmptyState= $('#searchEmptyState');
+    const searchWrap      = $('#searchWrap');
+    const searchInput     = $('#searchInput');
     const addButton       = $('#addButton');
     const addIcon         = $('#addIcon');
     const addLabel        = $('#addLabel');
@@ -289,6 +297,55 @@
       fileInput.value = '';
       fileInput.click();
     }
+    if (searchWrap) {
+      searchInput.addEventListener('input', (e) => {
+        if (searchWrap.classList.contains('is-focused') || searchInput.value) {
+          searchWrap.classList.add('has-text');
+        } else {
+          searchWrap.classList.remove('has-text');
+        }
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          const oldSearchQuery = searchQuery;
+          searchQuery = e.target.value;
+          
+          if (oldSearchQuery !== searchQuery) {
+            soundList.style.transition = 'opacity 0.3s ease';
+            soundList.style.opacity = '0';
+            if (searchEmptyState) {
+              searchEmptyState.style.transition = 'opacity 0.3s ease';
+              searchEmptyState.style.opacity = '0';
+            }
+            setTimeout(() => {
+              applySort(false);
+              soundList.style.opacity = '1';
+              if (searchEmptyState) {
+                searchEmptyState.style.opacity = '1';
+              }
+              setTimeout(() => { 
+                soundList.style.transition = '';
+                if (searchEmptyState) searchEmptyState.style.transition = '';
+              }, 300);
+            }, 300);
+          }
+        }, 500);
+      });
+
+      searchInput.addEventListener('focus', () => {
+        searchWrap.classList.add('is-focused');
+      });
+
+      searchInput.addEventListener('blur', () => {
+        searchWrap.classList.remove('is-focused');
+        if (searchInput.value) {
+          searchWrap.classList.add('has-text');
+        } else {
+          searchWrap.classList.remove('has-text');
+        }
+      });
+    }
+
     if (addButton) addButton.addEventListener('click', openFilePicker);
     if (railAdd)   railAdd.addEventListener('click',   openFilePicker);
     if (fileInput) fileInput.addEventListener('change', (e) => {
@@ -482,33 +539,11 @@
       if (animate && beforeRail && railSounds) playFlip(beforeRail, railSounds);
     }
 
-    if (orderBtnMain) {
-      orderBtnMain.addEventListener('click', () => {
+    if (orderBtnToggle) {
+      orderBtnToggle.addEventListener('click', () => {
         isAscending = !isAscending;
         updateSortUI();
         applySort();
-      });
-    }
-
-    if (orderBtnDrop) {
-      orderBtnDrop.addEventListener('click', (e) => {
-        e.stopPropagation();
-        orderMenu.classList.toggle('show');
-        if (sortMenu) sortMenu.classList.remove('show');
-      });
-    }
-
-    if (orderMenu) {
-      orderMenu.addEventListener('click', (e) => {
-        const item = e.target.closest('.sort-item');
-        if (!item) return;
-        const newAsc = item.dataset.order === 'asc';
-        if (newAsc !== isAscending) {
-          isAscending = newAsc;
-          updateSortUI();
-          applySort();
-        }
-        orderMenu.classList.remove('show');
       });
     }
 
@@ -524,7 +559,6 @@
       sortBtnDrop.addEventListener('click', (e) => {
         e.stopPropagation();
         sortMenu.classList.toggle('show');
-        if (orderMenu) orderMenu.classList.remove('show');
       });
     }
 
@@ -547,35 +581,46 @@
       if (sortMenu && sortMenu.classList.contains('show') && !e.target.closest('.sort-wrap')) {
         sortMenu.classList.remove('show');
       }
-      if (orderMenu && orderMenu.classList.contains('show') && !e.target.closest('.sort-wrap')) {
-        orderMenu.classList.remove('show');
-      }
     });
 
     function updateSortUI() {
       const mode = SORT_MODES[currentSortIdx];
-      if (sortBtnMain) {
-        sortBtnMain.textContent = SORT_LABELS[mode];
-      }
       if (sortMenu) {
         $$('.sort-item', sortMenu).forEach(el => {
           el.classList.toggle('active', el.dataset.sort === mode);
         });
       }
-      if (orderBtnMain) {
-        orderBtnMain.textContent = isAscending ? 'Ascending' : 'Descending';
+      if (sortBtnMainIconWrap) {
+        const icons = {
+          name: $('#iconSortName'),
+          type: $('#iconSortType'),
+          size: $('#iconSortSize'),
+          duration: $('#iconSortDuration')
+        };
+        for (const [key, icon] of Object.entries(icons)) {
+          if (icon) {
+            icon.classList.toggle('active', key === mode);
+          }
+        }
       }
-      if (orderMenu) {
-        $$('.sort-item', orderMenu).forEach(el => {
-          el.classList.toggle('active', el.dataset.order === (isAscending ? 'asc' : 'desc'));
-        });
+      if (iconAsc && iconDesc) {
+        if (isAscending) {
+          iconAsc.classList.add('active');
+          iconDesc.classList.remove('active');
+        } else {
+          iconAsc.classList.remove('active');
+          iconDesc.classList.add('active');
+        }
       }
     }
 
     function render({ newIds = [] } = {}) {
+      const q = searchQuery.toLowerCase().trim();
+      const filteredSounds = q ? sounds.filter(s => s.name.toLowerCase().includes(q)) : sounds;
+
       if (soundList) {
         soundList.innerHTML = '';
-        for (const s of sounds) {
+        for (const s of filteredSounds) {
           const el = buildSidebarCard(s);
           if (newIds.includes(s.id)) el.classList.add('entering');
           soundList.appendChild(el);
@@ -592,10 +637,10 @@
         for (const s of sounds) railSounds.appendChild(buildRailItem(s));
       }
 
-      const count = sounds.length;
-      if (libraryCount) libraryCount.textContent = `${count}`;
-      if (railCount) railCount.textContent = `${count}`;
-      if (emptyState) emptyState.classList.toggle('hide', count > 0);
+      if (libraryCount) libraryCount.textContent = `${filteredSounds.length}`;
+      if (railCount) railCount.textContent = `${sounds.length}`;
+      if (emptyState) emptyState.classList.toggle('hide', sounds.length > 0);
+      if (searchEmptyState) searchEmptyState.style.display = (sounds.length > 0 && filteredSounds.length === 0) ? 'flex' : 'none';
     }
 
     function buildRailItem(s) {
