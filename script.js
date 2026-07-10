@@ -614,6 +614,22 @@
       }
     }
 
+    function tweenNumber(el, newVal) {
+      if (!el) return;
+      const oldVal = el.textContent;
+      if (oldVal === String(newVal)) return;
+      
+      el.style.transition = 'filter 150ms ease, transform 150ms ease';
+      el.style.filter = 'blur(4px)';
+      el.style.transform = 'scale(0.9)';
+      
+      setTimeout(() => {
+        el.textContent = `${newVal}`;
+        el.style.filter = 'blur(0px)';
+        el.style.transform = 'scale(1)';
+      }, 150);
+    }
+
     function render({ newIds = [] } = {}) {
       const q = searchQuery.toLowerCase().trim();
       const filteredSounds = q ? sounds.filter(s => s.name.toLowerCase().includes(q)) : sounds;
@@ -637,8 +653,8 @@
         for (const s of sounds) railSounds.appendChild(buildRailItem(s));
       }
 
-      if (libraryCount) libraryCount.textContent = `${filteredSounds.length}`;
-      if (railCount) railCount.textContent = `${sounds.length}`;
+      if (libraryCount) tweenNumber(libraryCount, filteredSounds.length);
+      if (railCount) tweenNumber(railCount, sounds.length);
       if (emptyState) emptyState.classList.toggle('hide', sounds.length > 0);
       if (searchEmptyState) searchEmptyState.style.display = (sounds.length > 0 && filteredSounds.length === 0) ? 'flex' : 'none';
     }
@@ -677,7 +693,7 @@
     function buildSidebarCard(s) {
       const li = document.createElement('li');
       li.className = 'sound-card';
-      li.draggable = true;
+      
       li.dataset.id = String(s.id);
       if (s.id === activeId) li.classList.add('active');
       if (s.id === activeId && isPlaying) li.classList.add('is-playing');
@@ -1103,8 +1119,8 @@
           return;
         }
         const x = pct * trackWidth;
-        const overlapStart = x < 32;
-        const overlapEnd   = x > trackWidth - 32;
+        const overlapStart = x < 55;
+        const overlapEnd   = x > trackWidth - 55;
         tStart.classList.toggle('hidden', overlapStart);
         tEnd.classList.toggle('hidden',   overlapEnd);
       }
@@ -1293,8 +1309,8 @@
         }
 
         const count = sounds.length;
-        if (libraryCount) libraryCount.textContent = `${count}`;
-        if (railCount) railCount.textContent = `${count}`;
+        if (libraryCount) tweenNumber(libraryCount, count);
+        if (railCount) tweenNumber(railCount, count);
         if (emptyState) emptyState.classList.toggle('hide', count > 0);
 
         playFlip(before, soundList);
@@ -1304,69 +1320,116 @@
     }
 
     function attachCardDrag(li) {
+      let startX = 0, startY = 0, isDragging = false, clone = null;
+      let draggedId = null;
+
       li.addEventListener('mousedown', (e) => {
         if (e.target.closest('.icon-btn, .sound-thumb')) return;
+        
+        // Prevent default to stop native drag-and-drop and text selection
+        e.preventDefault();
+        
+        startX = e.clientX;
+        startY = e.clientY;
         li.classList.add('holding');
-      });
-      li.addEventListener('mouseup', () => li.classList.remove('holding'));
-      li.addEventListener('mouseleave', () => li.classList.remove('holding'));
+        draggedId = Number(li.dataset.id);
 
-      li.addEventListener('dragstart', (e) => {
-        if (e.target.closest('.icon-btn')) { e.preventDefault(); return; }
-        try { e.dataTransfer.setData('text/plain', li.dataset.id); } catch (_) {}
-        e.dataTransfer.effectAllowed = 'move';
-        setTimeout(() => {
+        function onMouseMove(ev) {
+          if (!isDragging) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            if (dx * dx + dy * dy > 25) {
+              isDragging = true;
+              li.classList.remove('holding');
+              li.classList.add('dragging');
+              
+              clone = li.cloneNode(true);
+              clone.classList.remove('dragging', 'holding', 'active', 'is-playing', 'entering', 'flipping');
+              clone.classList.add('drag-clone');
+              clone.style.width = `${li.offsetWidth}px`;
+              clone.style.transform = `translate3d(${ev.clientX + 10}px, ${ev.clientY + 10}px, 0)`;
+              document.body.appendChild(clone);
+              
+              clone.getBoundingClientRect(); // Force reflow
+              
+              // Fade in
+              requestAnimationFrame(() => {
+                if (clone) clone.classList.add('show');
+              });
+              
+              document.body.setAttribute('data-cursor', 'grabbing');
+            }
+          }
+          if (isDragging) {
+            ev.preventDefault();
+            document.body.setAttribute('data-cursor', 'grabbing');
+            clone.style.transform = `translate3d(${ev.clientX + 10}px, ${ev.clientY + 10}px, 0)`;
+            
+            const target = document.elementFromPoint(ev.clientX, ev.clientY);
+            const card = target ? target.closest('.sound-card') : null;
+            
+            $$('.drop-above, .drop-below').forEach(n => {
+              if (n !== card) n.classList.remove('drop-above', 'drop-below');
+            });
+            
+            if (card && card !== li) {
+              const r = card.getBoundingClientRect();
+              const above = ev.clientY < r.top + r.height / 2;
+              card.classList.toggle('drop-above', above);
+              card.classList.toggle('drop-below', !above);
+            }
+          }
+        }
+
+        function onMouseUp(ev) {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
           li.classList.remove('holding');
-          li.classList.add('dragging');
-        }, 0);
-      });
-      li.addEventListener('dragend', () => {
-        li.classList.remove('dragging');
-        li.classList.remove('holding');
-        $$('.drop-above, .drop-below').forEach((n) => n.classList.remove('drop-above', 'drop-below'));
-      });
-      li.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const r = li.getBoundingClientRect();
-        const above = e.clientY < r.top + r.height / 2;
-        li.classList.toggle('drop-above', above);
-        li.classList.toggle('drop-below', !above);
-      });
-      li.addEventListener('dragleave', () => {
-        li.classList.remove('drop-above', 'drop-below');
-      });
-      li.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const draggedId = Number(e.dataTransfer.getData('text/plain'));
-        if (!draggedId || draggedId === Number(li.dataset.id)) return;
-        const r = li.getBoundingClientRect();
-        const above = e.clientY < r.top + r.height / 2;
-        reorder(draggedId, Number(li.dataset.id), above);
+          
+          if (isDragging) {
+            isDragging = false;
+            li.classList.remove('dragging');
+            if (clone) {
+              const oldClone = clone;
+              oldClone.classList.remove('show');
+              setTimeout(() => {
+                oldClone.remove();
+              }, 200);
+            }
+            clone = null;
+            
+            const target = document.elementFromPoint(ev.clientX, ev.clientY);
+            const card = target ? target.closest('.sound-card') : null;
+            if (card && card !== li) {
+              const r = card.getBoundingClientRect();
+              const above = ev.clientY < r.top + r.height / 2;
+              reorder(draggedId, Number(card.dataset.id), above);
+            }
+            $$('.drop-above, .drop-below').forEach(n => n.classList.remove('drop-above', 'drop-below'));
+            document.body.removeAttribute('data-cursor');
+            ev.target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+          }
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
       });
     }
 
     function reorder(draggedId, targetId, placeAbove) {
       if (!soundList) return;
       const before = captureRects(soundList);
+      let beforeRail;
+      if (railSounds) beforeRail = captureRects(railSounds);
       const fromIdx = sounds.findIndex((s) => s.id === draggedId);
       let toIdx = sounds.findIndex((s) => s.id === targetId);
       if (fromIdx < 0 || toIdx < 0) return;
       const [moved] = sounds.splice(fromIdx, 1);
       if (fromIdx < toIdx) toIdx -= 1;
       sounds.splice(placeAbove ? toIdx : toIdx + 1, 0, moved);
-      soundList.innerHTML = '';
-      for (const s of sounds) soundList.appendChild(buildSidebarCard(s));
-      requestAnimationFrame(() => {
-        $$('.sound-card', soundList).forEach(el => {
-          checkMarquee(el.querySelector('.sound-name-wrap'), el.querySelector('.sound-name'));
-        });
-      });
-      if (railSounds) {
-        railSounds.innerHTML = '';
-        for (const s of sounds) railSounds.appendChild(buildRailItem(s));
-      }
+      render();
       playFlip(before, soundList);
+      if (beforeRail && railSounds) playFlip(beforeRail, railSounds);
     }
 
     function openEditModal(id) {
@@ -1536,7 +1599,23 @@
         }
         cursorWrap.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       });
+      document.addEventListener('dragover', (e) => {
+        if (!cursorVisible) {
+          cursorWrap.style.opacity = '1';
+          cursorVisible = true;
+        }
+        cursorWrap.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+      });
+      document.addEventListener('drag', (e) => {
+        if (e.clientX === 0 && e.clientY === 0) return;
+        if (!cursorVisible) {
+          cursorWrap.style.opacity = '1';
+          cursorVisible = true;
+        }
+        cursorWrap.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+      });
       document.addEventListener('mouseover', (e) => {
+        if (document.body.getAttribute('data-cursor') === 'grabbing') return;
         const t = e.target;
         if (t.closest('button, a, [data-tip], .pc-btn, .sound-action, .sound-delete, .custom-scrollbar-thumb, .sound-thumb, .rail-sound, .pp-track, .pp-thumb')) {
           document.body.setAttribute('data-cursor', 'pointer');

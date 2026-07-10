@@ -72,14 +72,15 @@
             <input type="text" class="searchbar-input" id="searchInput" aria-label="Search" />
           </div>
           <div class="meta-right">
-            <button class="sort-btn-standalone" id="orderBtnToggle" aria-label="Toggle sort order">
-              <div class="icon-transition-wrap">
-                <svg id="iconAsc" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                <svg id="iconDesc" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-              </div>
-            </button>
             <div class="sort-wrap">
               <div class="sort-control">
+                <button class="sort-btn-main" id="orderBtnToggle" aria-label="Toggle sort order">
+                  <div class="icon-transition-wrap">
+                    <svg id="iconAsc" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    <svg id="iconDesc" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                  </div>
+                </button>
+                <div class="sort-divider"></div>
                 <button class="sort-btn-main" id="sortBtnMain" aria-label="Sort by">
                   <div class="icon-transition-wrap" id="sortBtnMainIconWrap">
                     <svg id="iconSortName" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
