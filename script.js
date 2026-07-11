@@ -441,6 +441,8 @@
       if (sh > ch && ch > 0) {
         soundList.classList.add('has-scroll');
         libraryScrollbar.classList.add('active');
+        libraryScrollbar.style.opacity = '';
+        libraryScrollbar.style.pointerEvents = '';
         const thumbHeight = Math.max(20, (ch / sh) * ch);
         libraryScrollbarThumb.style.height = `${thumbHeight}px`;
         const st = soundList.scrollTop;
@@ -451,6 +453,8 @@
       } else {
         soundList.classList.remove('has-scroll');
         libraryScrollbar.classList.remove('active');
+        libraryScrollbar.style.opacity = '0';
+        libraryScrollbar.style.pointerEvents = 'none';
         if (isDraggingScroll) {
           isDraggingScroll = false;
           libraryScrollbarThumb.classList.remove('dragging');
@@ -469,6 +473,8 @@
       
       const ro = new ResizeObserver(() => requestAnimationFrame(updateScrollbar));
       ro.observe(soundList);
+      const mo = new MutationObserver(() => requestAnimationFrame(updateScrollbar));
+      mo.observe(soundList, { childList: true, subtree: true });
     }
 
     if (libraryScrollbarThumb) {
@@ -537,6 +543,7 @@
       render({ newIds });
       if (animate && before && soundList) playFlip(before, soundList);
       if (animate && beforeRail && railSounds) playFlip(beforeRail, railSounds);
+      setTimeout(() => requestAnimationFrame(updateScrollbar), 450);
     }
 
     if (orderBtnToggle) {
@@ -558,7 +565,10 @@
     if (sortBtnDrop) {
       sortBtnDrop.addEventListener('click', (e) => {
         e.stopPropagation();
-        sortMenu.classList.toggle('show');
+        const willShow = !sortMenu.classList.contains('show');
+        sortMenu.classList.toggle('show', willShow);
+        $('#iconSortDown').classList.toggle('active', !willShow);
+        $('#iconSortUp').classList.toggle('active', willShow);
       });
     }
 
@@ -574,12 +584,16 @@
           applySort();
         }
         sortMenu.classList.remove('show');
+        $('#iconSortDown').classList.add('active');
+        $('#iconSortUp').classList.remove('active');
       });
     }
 
     document.addEventListener('click', (e) => {
       if (sortMenu && sortMenu.classList.contains('show') && !e.target.closest('.sort-wrap')) {
         sortMenu.classList.remove('show');
+        $('#iconSortDown').classList.add('active');
+        $('#iconSortUp').classList.remove('active');
       }
     });
 
@@ -638,7 +652,10 @@
         soundList.innerHTML = '';
         for (const s of filteredSounds) {
           const el = buildSidebarCard(s);
-          if (newIds.includes(s.id)) el.classList.add('entering');
+          if (newIds.includes(s.id)) {
+            el.classList.add('entering');
+            el.addEventListener('animationend', () => el.classList.remove('entering'), { once: true });
+          }
           soundList.appendChild(el);
         }
         requestAnimationFrame(() => {
@@ -1090,11 +1107,14 @@
 
       let duration = 0;
       let trackWidth = track.clientWidth;
+      let lastPct = 0;
 
       const ro = new ResizeObserver((entries) => {
         for (let e of entries) {
           trackWidth = e.contentRect.width;
         }
+        setProgress(lastPct);
+        smartHide(lastPct);
       });
       ro.observe(track);
 
@@ -1106,10 +1126,13 @@
       }
 
       function setProgress(pct) {
+        lastPct = pct;
         const p = Math.max(0, Math.min(1, pct));
         fill.style.transform = `translateY(-50%) scaleX(${p})`;
-        thumb.style.transform = `translate(-50%, -50%) translateX(${p * trackWidth}px)`;
-        label.style.transform = `translate(-50%, -50%) translateX(${p * trackWidth}px)`;
+        thumb.style.left = `${p * 100}%`;
+        label.style.left = `${p * 100}%`;
+        thumb.style.transform = '';
+        label.style.transform = '';
       }
 
       function smartHide(pct) {
@@ -1316,6 +1339,8 @@
         playFlip(before, soundList);
         if (beforeRail && railSounds) playFlip(beforeRail, railSounds, { duration: 380 });
         showToast(`Removed — ${removed.name}`, 'danger');
+        
+        setTimeout(() => requestAnimationFrame(updateScrollbar), 450);
       }, ANIM_MS);
     }
 
@@ -1328,6 +1353,8 @@
         
         // Prevent default to stop native drag-and-drop and text selection
         e.preventDefault();
+        
+        li.classList.remove('entering');
         
         startX = e.clientX;
         startY = e.clientY;
@@ -1430,6 +1457,7 @@
       render();
       playFlip(before, soundList);
       if (beforeRail && railSounds) playFlip(beforeRail, railSounds);
+      setTimeout(() => requestAnimationFrame(updateScrollbar), 450);
     }
 
     function openEditModal(id) {
