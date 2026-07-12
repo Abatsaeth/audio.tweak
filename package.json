@@ -2,9 +2,11 @@
   "name": "static-site",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "mkdir -p dist && cp -r index.html style.css script.js fonts.css fonts js _headers netlify.toml dist/"
+    "build": "mkdir -p dist && cp -r index.html style.css script.js fonts.css fonts js icon.png icon.svg _headers netlify.toml dist/ 2>/dev/null || true"
   },
   "devDependencies": {
+    "stylelint": "^17.14.0",
+    "stylelint-config-standard": "^40.0.0",
     "vite": "^6.2.3"
   }
 }
