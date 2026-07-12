@@ -50,6 +50,12 @@
   let searchQuery = '';
   let searchTimeout = null;
 
+  function getPlaylist() {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return sounds;
+    return sounds.filter(s => s.name.toLowerCase().includes(q));
+  }
+
   // DOM elements (add new ones here if needed)
 
   // -------- Icons (inline SVG, no emojis, no external requests) --------
@@ -130,6 +136,14 @@
         <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>`,
+    repeat1: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M17 1l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M11 10h1v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`,
   };
 
@@ -669,8 +683,7 @@
     }
 
     function render({ newIds = [] } = {}) {
-      const q = searchQuery.toLowerCase().trim();
-      const filteredSounds = q ? sounds.filter(s => s.name.toLowerCase().includes(q)) : sounds;
+      const filteredSounds = getPlaylist();
 
       if (soundList) {
         const frag = document.createDocumentFragment();
@@ -858,14 +871,12 @@
       return audio;
     }
 
-    let lastAudioTime = -1;
-    let lastAudioRealTime = -1;
     let currentVisualTime = 0;
+    let lastRafTime = 0;
     
     function startRafLoop() {
       if (rafId) return;
-      lastAudioTime = -1;
-      lastAudioRealTime = -1;
+      lastRafTime = performance.now();
       currentVisualTime = audio ? audio.currentTime : 0;
       
       function tick(now) {
@@ -873,25 +884,17 @@
           let t = audio.currentTime;
           let dur = audio.duration || 0;
           
-          if (t !== lastAudioTime) {
-            lastAudioTime = t;
-            lastAudioRealTime = now;
-          }
-          
-          let extrapolated = lastAudioTime;
-          if (lastAudioRealTime > 0) {
-            extrapolated += Math.max(0, (now - lastAudioRealTime) / 1000);
-          }
-          if (extrapolated > dur) extrapolated = dur;
-
-          if (Math.abs(extrapolated - currentVisualTime) > 0.5) {
-            currentVisualTime = extrapolated;
+          if (Math.abs(t - currentVisualTime) > 0.5) {
+            currentVisualTime = t;
           } else {
-            currentVisualTime += (extrapolated - currentVisualTime) * 0.3;
+            let frameDelta = Math.max(0, Math.min(0.1, (now - lastRafTime) / 1000));
+            currentVisualTime += frameDelta;
+            currentVisualTime += (t - currentVisualTime) * 0.08;
           }
           
           player.update(currentVisualTime, dur);
         }
+        lastRafTime = now;
         rafId = requestAnimationFrame(tick);
       }
       rafId = requestAnimationFrame(tick);
@@ -930,23 +933,24 @@
     }
 
     function nextTrack() {
-      if (!sounds.length) return;
-      const curIdx = sounds.findIndex((s) => s.id === activeId);
+      const list = getPlaylist();
+      if (!list.length) return;
+      const curIdx = list.findIndex((s) => s.id === activeId);
       if (curIdx < 0) {
-        activeId = sounds[0].id;
+        activeId = list[0].id;
         loadActiveIntoAudio();
         startPlayback();
         return;
       }
       let nextIdx;
       if (shuffleOn) {
-        if (sounds.length === 1) nextIdx = 0;
+        if (list.length === 1) nextIdx = 0;
         else {
-          do { nextIdx = Math.floor(Math.random() * sounds.length); }
+          do { nextIdx = Math.floor(Math.random() * list.length); }
           while (nextIdx === curIdx);
         }
       } else {
-        nextIdx = (curIdx + 1) % sounds.length;
+        nextIdx = (curIdx + 1) % list.length;
       }
       
       if (nextIdx === curIdx) {
@@ -955,13 +959,14 @@
           audio.play().catch(() => {});
         }
       } else {
-        changeActiveTo(sounds[nextIdx].id, true);
+        changeActiveTo(list[nextIdx].id, true);
       }
     }
 
     function prevTrack() {
-      if (!sounds.length) return;
-      const curIdx = sounds.findIndex((s) => s.id === activeId);
+      const list = getPlaylist();
+      if (!list.length) return;
+      const curIdx = list.findIndex((s) => s.id === activeId);
       if (audio && audio.currentTime > 3) {
         audio.currentTime = 0;
         return;
@@ -970,7 +975,7 @@
         if (audio) audio.currentTime = 0;
         return;
       }
-      changeActiveTo(sounds[curIdx - 1].id, true);
+      changeActiveTo(list[curIdx - 1].id, true);
     }
 
     function changeActiveTo(newId, autoPlay) {
@@ -1119,7 +1124,6 @@
           </button>
           <button class="pc-btn pc-repeat" aria-label="Repeat" data-tip="Repeat: off">
             ${ICONS.repeat}
-            <span class="pc-repeat-badge" hidden>1</span>
           </button>
         </div>
       `;
@@ -1239,17 +1243,21 @@
         repeatMode = mode;
         btnRep.classList.remove('on', 'one');
         if (mode === REPEAT_OFF) {
+          btnRep.innerHTML = ICONS.repeat;
           btnRep.setAttribute('data-tip', 'Repeat: off');
         } else if (mode === REPEAT_ALL) {
           btnRep.classList.add('on');
+          btnRep.innerHTML = ICONS.repeat;
           btnRep.setAttribute('data-tip', 'Repeat: all');
         } else if (mode === REPEAT_ONE) {
           btnRep.classList.add('on', 'one');
+          btnRep.innerHTML = ICONS.repeat1;
           btnRep.setAttribute('data-tip', 'Repeat: one');
         }
       }
       btnRep.addEventListener('click', () => {
-        if (sounds.length <= 1) {
+        const list = getPlaylist();
+        if (list.length <= 1) {
           setRepeat(repeatMode === REPEAT_ONE ? REPEAT_OFF : REPEAT_ONE);
         } else {
           const next = (repeatMode + 1) % 3;

@@ -1673,32 +1673,6 @@ body.has-player .brand { opacity: 0.35; }
 }
 .pc-play svg { width: 22px; height: 22px; }
 
-.pc-repeat-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 12px;
-  height: 12px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--red);
-  color: #fff;
-  font-size: 8.5px;
-  font-weight: 700;
-  font-family: var(--font-display);
-  box-shadow: 0 0 6px rgb(226 52 74 / 60%);
-  opacity: 0;
-  transform: scale(0.6);
-  pointer-events: none;
-  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
-}
-
-.pc-btn.one .pc-repeat-badge {
-  opacity: 1;
-  transform: scale(1);
-}
-
 /* =====================================================================
    MODAL
    ===================================================================== */
