@@ -826,7 +826,7 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
 .sound-list {
   flex: 1;
   overflow: visible auto;
-  padding: 14px 14px 14px;
+  padding: 16px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
