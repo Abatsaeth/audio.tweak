@@ -389,10 +389,14 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   position: absolute; inset: 0; display: grid; place-items: center;
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
-.rail-sound .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
-.rail-sound .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(-30deg); }
-.rail-sound.is-playing .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(30deg); }
-.rail-sound.is-playing .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.rail-sound .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+.rail-sound .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.rail-sound:hover .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.rail-sound:hover .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(30deg); }
+.rail-sound.is-playing .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.rail-sound.is-playing .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+.rail-sound.is-playing:hover .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(30deg); }
+.rail-sound.is-playing:hover .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
 
 .rail-sound:hover { transform: translateY(-1px); background: rgb(255 255 255 / 6%); border-color: var(--hairline-2); color: #fff; }
 .rail-sound:hover .ico-default { opacity: 0; transform: scale(0.7); }
@@ -406,8 +410,9 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
 }
 .rail-sound.active .ico-default { opacity: 0; transform: scale(0.7); }
 .rail-sound.active .ico-active  { opacity: 1; transform: scale(1); }
-.rail-sound.active:hover .ico-active { opacity: 0; transform: scale(0.7); }
-.rail-sound.active:hover .ico-hover  { opacity: 1; transform: scale(1); }
+.rail-sound.active:hover .ico-default { opacity: 0; transform: scale(0.7); }
+.rail-sound.active:hover .ico-active { opacity: 1; transform: scale(1); }
+.rail-sound.active:hover .ico-hover  { opacity: 0; transform: scale(0.7); }
 
 .rail-sound.removing {
   pointer-events: none;
@@ -1056,10 +1061,14 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   position: absolute; inset: 0; display: grid; place-items: center;
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
-.sound-thumb .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
-.sound-thumb .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(-30deg); }
-.sound-card.is-playing .sound-thumb .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(30deg); }
-.sound-card.is-playing .sound-thumb .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.sound-thumb .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+.sound-thumb .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.sound-thumb:hover .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.sound-thumb:hover .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(30deg); }
+.sound-card.is-playing .sound-thumb .ico-active-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.sound-card.is-playing .sound-thumb .ico-active-pause { opacity: 0; transform: scale(0.6) rotate(-30deg); }
+.sound-card.is-playing .sound-thumb:hover .ico-active-play  { opacity: 0; transform: scale(0.6) rotate(30deg); }
+.sound-card.is-playing .sound-thumb:hover .ico-active-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
 
 .sound-thumb:hover { transform: scale(1.04); }
 .sound-thumb:hover .ico-default { opacity: 0; transform: scale(0.75); }
@@ -1073,8 +1082,9 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
 }
 .sound-card.active .sound-thumb .ico-default { opacity: 0; transform: scale(0.75); }
 .sound-card.active .sound-thumb .ico-active  { opacity: 1; transform: scale(1); }
-.sound-card.active .sound-thumb:hover .ico-active { opacity: 0; transform: scale(0.75); }
-.sound-card.active .sound-thumb:hover .ico-hover  { opacity: 1; transform: scale(1); }
+.sound-card.active .sound-thumb:hover .ico-default { opacity: 0; transform: scale(0.75); }
+.sound-card.active .sound-thumb:hover .ico-active { opacity: 1; transform: scale(1); }
+.sound-card.active .sound-thumb:hover .ico-hover  { opacity: 0; transform: scale(0.75); }
 
 .sound-meta { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
@@ -1665,10 +1675,14 @@ body.has-player .brand { opacity: 0.35; }
   place-items: center;
   transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
 }
-.pc-icon-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
-.pc-icon-pause { opacity: 0; transform: scale(0.55) rotate(-35deg); }
-.pc-play.is-playing .pc-icon-play  { opacity: 0; transform: scale(0.55) rotate(35deg); }
-.pc-play.is-playing .pc-icon-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.pc-icon-play  { opacity: 0; transform: scale(0.55) rotate(-35deg); }
+.pc-icon-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
+.pc-play:hover .pc-icon-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.pc-play:hover .pc-icon-pause { opacity: 0; transform: scale(0.55) rotate(35deg); }
+.pc-play.is-playing .pc-icon-play  { opacity: 1; transform: scale(1)   rotate(0deg); }
+.pc-play.is-playing .pc-icon-pause { opacity: 0; transform: scale(0.55) rotate(-35deg); }
+.pc-play.is-playing:hover .pc-icon-play  { opacity: 0; transform: scale(0.55) rotate(35deg); }
+.pc-play.is-playing:hover .pc-icon-pause { opacity: 1; transform: scale(1)   rotate(0deg); }
 
 .pc-play:hover {
   background: linear-gradient(135deg, var(--red-soft), var(--red));
