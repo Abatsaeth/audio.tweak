@@ -800,6 +800,7 @@
       });
 
       li.addEventListener('click', (e) => {
+        if (li.dataset.justDragged) return;
         if (e.target.closest('.sound-thumb')) return;
         if (e.target.closest('.icon-btn'))    return;
         setActiveOnly(s.id);
@@ -1398,6 +1399,30 @@
     function attachCardDrag(li) {
       let startX = 0, startY = 0, isDragging = false, clone = null;
       let draggedId = null;
+      let scrollRAF = null;
+      let lastMouseY = 0;
+
+      function scrollLoop() {
+        if (!isDragging) {
+          scrollRAF = null;
+          return;
+        }
+        const sl = $('#soundList');
+        if (sl) {
+          const r = sl.getBoundingClientRect();
+          const edge = 60;
+          let speed = 0;
+          if (lastMouseY < r.top + edge) {
+            speed = (lastMouseY - (r.top + edge)) * 0.3;
+          } else if (lastMouseY > r.bottom - edge) {
+            speed = (lastMouseY - (r.bottom - edge)) * 0.3;
+          }
+          if (speed !== 0) {
+            sl.scrollTop += Math.sign(speed) * Math.max(1, Math.min(25, Math.abs(speed)));
+          }
+        }
+        scrollRAF = requestAnimationFrame(scrollLoop);
+      }
 
       li.addEventListener('mousedown', (e) => {
         if (e.target.closest('.icon-btn, .sound-thumb')) return;
@@ -1409,10 +1434,12 @@
         
         startX = e.clientX;
         startY = e.clientY;
+        lastMouseY = e.clientY;
         li.classList.add('holding');
         draggedId = Number(li.dataset.id);
 
         function onMouseMove(ev) {
+          lastMouseY = ev.clientY;
           if (!isDragging) {
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
@@ -1436,6 +1463,7 @@
               });
               
               document.body.setAttribute('data-cursor', 'grabbing');
+              scrollRAF = requestAnimationFrame(scrollLoop);
             }
           }
           if (isDragging) {
@@ -1464,8 +1492,15 @@
           document.removeEventListener('mouseup', onMouseUp);
           li.classList.remove('holding');
           
+          if (scrollRAF) {
+            cancelAnimationFrame(scrollRAF);
+            scrollRAF = null;
+          }
+          
           if (isDragging) {
             isDragging = false;
+            li.dataset.justDragged = 'true';
+            setTimeout(() => delete li.dataset.justDragged, 100);
             li.classList.remove('dragging');
             if (clone) {
               const oldClone = clone;

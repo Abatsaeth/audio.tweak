@@ -1363,6 +1363,8 @@ body.has-player .brand { opacity: 0.35; }
   max-width: 320px;
   flex-shrink: 1;
   overflow: hidden;
+  display: flex;
+  align-items: center;
 }
 
 .topbar-name-inner {
@@ -1373,6 +1375,8 @@ body.has-player .brand { opacity: 0.35; }
   font-weight: 600;
   letter-spacing: 0em;
   color: var(--text);
+  line-height: 1;
+  margin-top: -2px;
   transition: opacity 180ms var(--ease-soft), transform 180ms var(--ease-out);
   transform-origin: center;
 }
@@ -1392,7 +1396,7 @@ body.has-player .brand { opacity: 0.35; }
 .topbar-sep {
   width: 1px;
   height: 20px;
-  margin: 0 2px;
+  margin: 0 4px;
   background: var(--hairline-2);
   flex-shrink: 0;
 }
