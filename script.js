@@ -60,6 +60,38 @@
 
   // -------- Icons (inline SVG, no emojis, no external requests) --------
   const ICONS = {
+    infoTitle: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoFile: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M13 2v7h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoType: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M7 7h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoSize: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoClock: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoCalendar: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoDownload: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
     logo: `
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
@@ -98,6 +130,12 @@
     trash: `
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M5 7h14M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    info: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
       </svg>`,
     playLg: `
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -287,6 +325,10 @@
     const editModal       = $('#editModal');
     const editInput       = $('#editInput');
     const editSave        = $('#editSave');
+
+    const infoModal       = $('#infoModal');
+    const infoContent     = $('#infoContent');
+
     const topbar          = $('#topbar');
     const topbarInner     = topbar ? topbar.querySelector('.topbar-inner') : null;
     const topbarName      = $('#topbarName');
@@ -409,6 +451,7 @@
           duration,
           url,
           file: f,
+          addedAt: Date.now(),
         });
       }
 
@@ -783,6 +826,7 @@
           </div>
         </div>
         <div class="sound-actions">
+          <button class="icon-btn info" aria-label="Info">${ICONS.info}</button>
           <button class="icon-btn edit" aria-label="Rename">${ICONS.pencil}</button>
           <button class="icon-btn danger delete" aria-label="Remove">${ICONS.trash}</button>
         </div>
@@ -805,6 +849,7 @@
         if (e.target.closest('.icon-btn'))    return;
         setActiveOnly(s.id);
       });
+      li.querySelector('.info').addEventListener('click', (e) => { e.stopPropagation(); openInfoModal(s.id); });
       li.querySelector('.edit').addEventListener('click', (e) => { e.stopPropagation(); openEditModal(s.id); });
       li.querySelector('.delete').addEventListener('click', (e) => { e.stopPropagation(); removeSound(s.id, li); });
       attachCardDrag(li);
@@ -1105,6 +1150,9 @@
           </div>
         </div>
         <div class="player-controls">
+          <button class="pc-btn pc-info" aria-label="Info" data-tip="Info" style="position: absolute; left: 0;">
+            ${ICONS.info}
+          </button>
           <button class="pc-btn pc-shuffle" aria-label="Shuffle" data-tip="Shuffle">
             ${ICONS.shuffle}
           </button>
@@ -1136,6 +1184,7 @@
       const tStart     = root.querySelector('.pp-time-start');
       const tEnd       = root.querySelector('.pp-time-end');
       const timesRow   = root.querySelector('.pp-times');
+      const btnInfo    = root.querySelector('.pc-info');
       const btnPlay    = root.querySelector('.pc-play');
       const btnPrev    = root.querySelector('.pc-prev');
       const btnNext    = root.querySelector('.pc-next');
@@ -1232,6 +1281,7 @@
 
       btnPrev.addEventListener('click', () => prevTrack());
       btnNext.addEventListener('click', () => nextTrack());
+      btnInfo.addEventListener('click', () => { if (activeId) openInfoModal(activeId); });
 
       function setShuffle(on) {
         shuffleOn = !!on;
@@ -1563,7 +1613,36 @@
       editModal.setAttribute('aria-hidden', 'true');
       editingId = null;
     }
+    
+    function openInfoModal(id) {
+      if (!infoModal || !infoContent) return;
+      const s = sounds.find((x) => x.id === id);
+      if (!s) return;
+      const dateStr = s.addedAt ? (new Date(s.addedAt).toLocaleDateString() + ' ' + new Date(s.addedAt).toLocaleTimeString()) : 'Unknown';
+      const modifiedStr = s.file && s.file.lastModified ? (new Date(s.file.lastModified).toLocaleDateString() + ' ' + new Date(s.file.lastModified).toLocaleTimeString()) : 'Unknown';
+      const originalFileName = s.file && s.file.name ? s.file.name : (s.name + '.' + s.format.toLowerCase());
+      infoContent.innerHTML = `
+        <div class="info-row"><span class="info-label">${ICONS.infoTitle} <span class="info-sep"></span> Title</span><span class="info-val" title="${s.name}">${s.name}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoFile} <span class="info-sep"></span> File Name</span><span class="info-val" title="${originalFileName}">${originalFileName}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Format</span><span class="info-val">${s.format}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoSize} <span class="info-sep"></span> Size</span><span class="info-val">${fmtMB(s.size)}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoClock} <span class="info-sep"></span> Duration</span><span class="info-val">${fmtDuration(s.duration)}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoCalendar} <span class="info-sep"></span> Added</span><span class="info-val">${dateStr}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoDownload} <span class="info-sep"></span> Downloaded</span><span class="info-val">${modifiedStr}</span></div>
+      `;
+      infoModal.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(() => infoModal.classList.add('open'));
+    }
+
+    function closeInfoModal() {
+      if (!infoModal) return;
+      if (!infoModal.classList.contains('open')) return;
+      infoModal.classList.remove('open');
+      infoModal.setAttribute('aria-hidden', 'true');
+    }
+
     if (editModal) editModal.addEventListener('click', (e) => { if (e.target.matches('[data-close]')) closeEditModal(); });
+    if (infoModal) infoModal.addEventListener('click', (e) => { if (e.target.matches('[data-close]')) closeInfoModal(); });
     if (editSave)  editSave.addEventListener('click', commitEdit);
     if (editInput) editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitEdit(); });
 

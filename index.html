@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AUDIO.TWEAK</title>
-  <meta name="theme-color" content="#FC2C44" />
+  <meta name="theme-color" content="#ff6076" />
   <meta name="description" content="A fast, smooth, in-browser audio player. Drag & drop files, reorder, rename, search and shuffle your local audio library seamlessly." />
   <meta property="og:image" content="https://abatsaeth.github.io/audio.tweak/icon.png" />
   <meta name="twitter:image" content="https://abatsaeth.github.io/audio.tweak/icon.png" />
@@ -23,7 +23,7 @@
   <meta name="twitter:title" content="AUDIO.TWEAK" />
   <meta name="twitter:description" content="A fast, smooth, in-browser audio player. Drag & drop files, reorder, rename, search and shuffle your local audio library seamlessly." />
 
-  <link rel="icon" type="image/png" href="https://abatsaeth.github.io/audio.tweak/icon.png" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="stylesheet" href="./style.css" />
   <link href="./fonts.css" rel="stylesheet">
 </head>
@@ -211,6 +211,21 @@
       <div class="modal-actions">
         <button class="btn ghost" data-close>Cancel</button>
         <button class="btn primary" id="editSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       INFO MODAL
+       ================================================================ -->
+  <div class="modal" id="infoModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="modal-glow"></div>
+      <h3 id="infoTitle">Track Info</h3>
+      <div class="info-content" id="infoContent"></div>
+      <div class="modal-actions">
+        <button class="btn primary" data-close style="width: 100%;">Close</button>
       </div>
     </div>
   </div>
