@@ -1724,7 +1724,7 @@
       infoContent.innerHTML = `
         <div class="info-row"><span class="info-label">${ICONS.infoTitle} <span class="info-sep"></span> Name</span><span class="info-val" title="${s.name}">${s.name}</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Format</span><span class="info-val">${s.format}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoMime} <span class="info-sep"></span> MIME (Multipurpose Internet Mail Extensions) Type</span><span class="info-val" title="${mimeType}">${mimeType}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoMime} <span class="info-sep"></span> MIME Type</span><span class="info-val" title="${mimeType}">${mimeType}</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoSize} <span class="info-sep"></span> Size</span><span class="info-val">${fmtMB(s.size)} (${exactBytes})</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoClock} <span class="info-sep"></span> Duration</span><span class="info-val">${fmtDuration(s.duration)} (${s.duration.toFixed(3)}s)</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Bitrate</span><span class="info-val">${bitrate}</span></div>
