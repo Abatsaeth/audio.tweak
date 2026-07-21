@@ -1784,24 +1784,54 @@ body.has-player .brand { opacity: 0.35; }
   box-shadow: 0 0 0 4px rgb(226 52 74 / 12%);
 }
 
-.info-content {
+#infoModal .modal-card {
+  width: min(800px, 92vw);
+}
+
+.info-content-wrap {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   margin-top: 14px;
   margin-bottom: 24px;
+}
+
+.info-content-wrap:hover .custom-scrollbar.active,
+.info-content-wrap.is-dragging .custom-scrollbar.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#infoScrollbar {
+  top: 0;
+  bottom: 0;
+  right: 0;
+}
+
+.info-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   font-size: 14px;
   color: var(--text-soft);
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 14px;
+  scrollbar-width: none;
 }
+.info-content::-webkit-scrollbar {
+  display: none;
+}
+
 .info-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
   background: rgb(255 255 255 / 3%);
   border: 1px solid var(--hairline);
   border-radius: 10px;
+  overflow: hidden;
 }
 .info-label {
   display: flex;
@@ -1812,19 +1842,22 @@ body.has-player .brand { opacity: 0.35; }
 }
 .info-label svg {
   color: var(--text-faint);
+  flex-shrink: 0;
 }
 .info-sep {
   width: 1px;
   height: 12px;
   background: var(--hairline-2);
+  flex-shrink: 0;
 }
 .info-val {
   color: #fff;
-  max-width: 55%;
+  max-width: 100%;
   font-family: var(--font-mono);
   font-size: 13px;
-  text-overflow: ellipsis;
+  line-height: 1.5;
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

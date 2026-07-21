@@ -74,6 +74,10 @@
         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M7 7h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`,
+    infoMime: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
     infoSize: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -327,7 +331,10 @@
     const editSave        = $('#editSave');
 
     const infoModal       = $('#infoModal');
+    const infoContentWrap = $('#infoContentWrap');
     const infoContent     = $('#infoContent');
+    const infoScrollbar   = $('#infoScrollbar');
+    const infoScrollbarThumb = $('#infoScrollbarThumb');
 
     const topbar          = $('#topbar');
     const topbarInner     = topbar ? topbar.querySelector('.topbar-inner') : null;
@@ -590,6 +597,94 @@
           isDraggingScroll = false;
           libraryScrollbarThumb.classList.remove('dragging');
           if (library) library.classList.remove('is-dragging');
+          if (document.body.getAttribute('data-cursor') === 'grabbing') {
+            document.body.removeAttribute('data-cursor');
+          }
+        }
+      });
+    }
+
+    let isInfoDraggingScroll = false;
+    function updateInfoScrollbar() {
+      if (!infoScrollbar || !infoScrollbarThumb || !infoContent || !infoContentWrap) return;
+      const sh = infoContent.scrollHeight;
+      const ch = infoContent.clientHeight;
+      if (sh > ch && ch > 0) {
+        infoContentWrap.classList.add('has-scroll');
+        infoScrollbar.classList.add('active');
+        infoScrollbar.style.opacity = '';
+        infoScrollbar.style.pointerEvents = '';
+        const thumbHeight = Math.max(20, (ch / sh) * ch);
+        infoScrollbarThumb.style.height = `${thumbHeight}px`;
+        const st = infoContent.scrollTop;
+        const maxSt = sh - ch;
+        const maxThumbTop = ch - thumbHeight;
+        const thumbTop = maxSt > 0 ? (st / maxSt) * maxThumbTop : 0;
+        infoScrollbarThumb.style.transform = `translateY(${thumbTop}px)`;
+      } else {
+        infoContentWrap.classList.remove('has-scroll');
+        infoScrollbar.classList.remove('active');
+        infoScrollbar.style.opacity = '0';
+        infoScrollbar.style.pointerEvents = 'none';
+        if (isInfoDraggingScroll) {
+          isInfoDraggingScroll = false;
+          infoScrollbarThumb.classList.remove('dragging');
+          infoContentWrap.classList.remove('is-dragging');
+          if (document.body.getAttribute('data-cursor') === 'grabbing') {
+            document.body.removeAttribute('data-cursor');
+          }
+        }
+      }
+    }
+
+    let infoScrollTimeout;
+    if (infoContent) {
+      infoContent.addEventListener('scroll', () => {
+        if (infoScrollbarThumb) infoScrollbarThumb.classList.add('scrolling');
+        clearTimeout(infoScrollTimeout);
+        infoScrollTimeout = setTimeout(() => {
+          if (infoScrollbarThumb) infoScrollbarThumb.classList.remove('scrolling');
+        }, 150);
+        requestAnimationFrame(updateInfoScrollbar);
+      }, { passive: true });
+      
+      const ro = new ResizeObserver(() => requestAnimationFrame(updateInfoScrollbar));
+      ro.observe(infoContent);
+      const mo = new MutationObserver(() => requestAnimationFrame(updateInfoScrollbar));
+      mo.observe(infoContent, { childList: true, subtree: true });
+    }
+
+    if (infoScrollbarThumb) {
+      let scrollStartY = 0;
+      let scrollStartTop = 0;
+
+      infoScrollbarThumb.addEventListener('mousedown', (e) => {
+        isInfoDraggingScroll = true;
+        scrollStartY = e.clientY;
+        scrollStartTop = infoContent.scrollTop;
+        infoScrollbarThumb.classList.add('dragging');
+        if (infoContentWrap) infoContentWrap.classList.add('is-dragging');
+        document.body.setAttribute('data-cursor', 'grabbing');
+        e.preventDefault();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isInfoDraggingScroll) {
+          const delta = e.clientY - scrollStartY;
+          const sh = infoContent.scrollHeight;
+          const ch = infoContent.clientHeight;
+          const maxThumbTop = ch - Math.max(20, (ch / sh) * ch);
+          const maxSt = sh - ch;
+          const scrollRatio = maxThumbTop > 0 ? (delta / maxThumbTop) : 0;
+          infoContent.scrollTop = scrollStartTop + (scrollRatio * maxSt);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isInfoDraggingScroll) {
+          isInfoDraggingScroll = false;
+          infoScrollbarThumb.classList.remove('dragging');
+          if (infoContentWrap) infoContentWrap.classList.remove('is-dragging');
           if (document.body.getAttribute('data-cursor') === 'grabbing') {
             document.body.removeAttribute('data-cursor');
           }
@@ -1620,18 +1715,27 @@
       if (!s) return;
       const dateStr = s.addedAt ? (new Date(s.addedAt).toLocaleDateString() + ' ' + new Date(s.addedAt).toLocaleTimeString()) : 'Unknown';
       const modifiedStr = s.file && s.file.lastModified ? (new Date(s.file.lastModified).toLocaleDateString() + ' ' + new Date(s.file.lastModified).toLocaleTimeString()) : 'Unknown';
-      const originalFileName = s.file && s.file.name ? s.file.name : (s.name + '.' + s.format.toLowerCase());
+      const mimeType = s.file && s.file.type ? s.file.type : 'audio/' + s.format.toLowerCase();
+      
+      // format size with bytes
+      const exactBytes = new Intl.NumberFormat().format(s.size) + ' bytes';
+      const bitrate = s.duration ? Math.round((s.size * 8) / s.duration / 1000) + ' kbps' : 'Unknown';
+      
       infoContent.innerHTML = `
-        <div class="info-row"><span class="info-label">${ICONS.infoTitle} <span class="info-sep"></span> Title</span><span class="info-val" title="${s.name}">${s.name}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoFile} <span class="info-sep"></span> File Name</span><span class="info-val" title="${originalFileName}">${originalFileName}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoTitle} <span class="info-sep"></span> Name</span><span class="info-val" title="${s.name}">${s.name}</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Format</span><span class="info-val">${s.format}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoSize} <span class="info-sep"></span> Size</span><span class="info-val">${fmtMB(s.size)}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoClock} <span class="info-sep"></span> Duration</span><span class="info-val">${fmtDuration(s.duration)}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoMime} <span class="info-sep"></span> MIME (Multipurpose Internet Mail Extensions) Type</span><span class="info-val" title="${mimeType}">${mimeType}</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoSize} <span class="info-sep"></span> Size</span><span class="info-val">${fmtMB(s.size)} (${exactBytes})</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoClock} <span class="info-sep"></span> Duration</span><span class="info-val">${fmtDuration(s.duration)} (${s.duration.toFixed(3)}s)</span></div>
+        <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Bitrate</span><span class="info-val">${bitrate}</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoCalendar} <span class="info-sep"></span> Added</span><span class="info-val">${dateStr}</span></div>
         <div class="info-row"><span class="info-label">${ICONS.infoDownload} <span class="info-sep"></span> Downloaded</span><span class="info-val">${modifiedStr}</span></div>
       `;
       infoModal.setAttribute('aria-hidden', 'false');
-      requestAnimationFrame(() => infoModal.classList.add('open'));
+      requestAnimationFrame(() => {
+        infoModal.classList.add('open');
+        if (typeof updateInfoScrollbar === 'function') requestAnimationFrame(updateInfoScrollbar);
+      });
     }
 
     function closeInfoModal() {
