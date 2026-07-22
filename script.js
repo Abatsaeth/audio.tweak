@@ -62,8 +62,9 @@
   const ICONS = {
     help: `
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
       </svg>`,
     check: `
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -173,13 +174,12 @@
         <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
       </svg>`,
     pencil: `
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M4 17.5V20h2.5L18.5 8l-2.5-2.5L4 17.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-        <path d="M14.5 4.5l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
       </svg>`,
     trash: `
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M5 7h14M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
       </svg>`,
     info: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -412,6 +412,11 @@
     const editInput       = $('#editInput');
     const editSave        = $('#editSave');
 
+    const contextMenu     = $('#contextMenu');
+    const contextEdit     = $('#contextEdit');
+    const contextInfo     = $('#contextInfo');
+    const contextDelete   = $('#contextDelete');
+
     const infoModal       = $('#infoModal');
     const infoContentWrap = $('#infoContentWrap');
     const infoContent     = $('#infoContent');
@@ -607,12 +612,13 @@
         libraryScrollbar.classList.add('active');
         libraryScrollbar.style.opacity = '';
         libraryScrollbar.style.pointerEvents = '';
-        const thumbHeight = Math.max(20, (ch / sh) * ch);
+        const trackHeight = libraryScrollbar.clientHeight;
+        const thumbHeight = Math.max(20, (ch / sh) * trackHeight);
         libraryScrollbarThumb.style.height = `${thumbHeight}px`;
         const st = soundList.scrollTop;
         const maxSt = sh - ch;
-        const maxThumbTop = ch - thumbHeight;
-        const thumbTop = (st / maxSt) * maxThumbTop;
+        const maxThumbTop = trackHeight - thumbHeight;
+        const thumbTop = maxSt > 0 ? (st / maxSt) * maxThumbTop : 0;
         libraryScrollbarThumb.style.transform = `translateY(${thumbTop}px)`;
       } else {
         soundList.classList.remove('has-scroll');
@@ -665,12 +671,13 @@
         if (!isDraggingScroll) return;
         const sh = soundList.scrollHeight;
         const ch = soundList.clientHeight;
-        const thumbHeight = Math.max(20, (ch / sh) * ch);
+        const trackHeight = libraryScrollbar.clientHeight;
+        const thumbHeight = Math.max(20, (ch / sh) * trackHeight);
         const maxSt = sh - ch;
-        const maxThumbTop = ch - thumbHeight;
+        const maxThumbTop = trackHeight - thumbHeight;
         
         const deltaY = e.clientY - scrollStartY;
-        const deltaScroll = (deltaY / maxThumbTop) * maxSt;
+        const deltaScroll = maxThumbTop > 0 ? (deltaY / maxThumbTop) * maxSt : 0;
         soundList.scrollTop = scrollStartTop + deltaScroll;
       });
 
@@ -696,11 +703,12 @@
         infoScrollbar.classList.add('active');
         infoScrollbar.style.opacity = '';
         infoScrollbar.style.pointerEvents = '';
-        const thumbHeight = Math.max(20, (ch / sh) * ch);
+        const trackHeight = infoScrollbar.clientHeight;
+        const thumbHeight = Math.max(20, (ch / sh) * trackHeight);
         infoScrollbarThumb.style.height = `${thumbHeight}px`;
         const st = infoContent.scrollTop;
         const maxSt = sh - ch;
-        const maxThumbTop = ch - thumbHeight;
+        const maxThumbTop = trackHeight - thumbHeight;
         const thumbTop = maxSt > 0 ? (st / maxSt) * maxThumbTop : 0;
         infoScrollbarThumb.style.transform = `translateY(${thumbTop}px)`;
       } else {
@@ -755,7 +763,9 @@
           const delta = e.clientY - scrollStartY;
           const sh = infoContent.scrollHeight;
           const ch = infoContent.clientHeight;
-          const maxThumbTop = ch - Math.max(20, (ch / sh) * ch);
+          const trackHeight = infoScrollbar.clientHeight;
+          const thumbHeight = Math.max(20, (ch / sh) * trackHeight);
+          const maxThumbTop = trackHeight - thumbHeight;
           const maxSt = sh - ch;
           const scrollRatio = maxThumbTop > 0 ? (delta / maxThumbTop) : 0;
           infoContent.scrollTop = scrollStartTop + (scrollRatio * maxSt);
@@ -814,6 +824,7 @@
 
     if (sortBtnMain) {
       sortBtnMain.addEventListener('click', () => {
+        closeContextMenu();
         currentSortIdx = (currentSortIdx + 1) % SORT_MODES.length;
         updateSortUI();
         applySort();
@@ -823,6 +834,7 @@
     if (sortBtnDrop) {
       sortBtnDrop.addEventListener('click', (e) => {
         e.stopPropagation();
+        closeContextMenu();
         const willShow = !sortMenu.classList.contains('show');
         sortMenu.classList.toggle('show', willShow);
         $('#iconSortDown').classList.toggle('active', !willShow);
@@ -853,7 +865,88 @@
         $('#iconSortDown').classList.add('active');
         $('#iconSortUp').classList.remove('active');
       }
+      if (contextMenu && contextMenu.classList.contains('show') && !e.target.closest('.context-menu')) {
+        closeContextMenu();
+      }
     });
+
+    let activeContextId = null;
+    let activeContextCard = null;
+
+    function closeContextMenu() {
+      if (!contextMenu) return;
+      contextMenu.classList.remove('show');
+      if (activeContextCard) {
+        activeContextCard.classList.remove('context-open');
+        activeContextCard = null;
+      }
+      activeContextId = null;
+    }
+
+    function openContextMenu(x, y, id, card) {
+      if (!contextMenu) return;
+      
+      contextMenu.style.left = `${x}px`;
+      contextMenu.style.top = `${y}px`;
+      
+      requestAnimationFrame(() => {
+        const rect = contextMenu.getBoundingClientRect();
+        let newX = x;
+        let newY = y;
+        if (x + rect.width > window.innerWidth) newX = x - rect.width;
+        if (y + rect.height > window.innerHeight) newY = y - rect.height;
+        contextMenu.style.left = `${newX}px`;
+        contextMenu.style.top = `${newY}px`;
+        
+        contextMenu.classList.add('show');
+      });
+
+      activeContextId = id;
+      if (activeContextCard) activeContextCard.classList.remove('context-open');
+      activeContextCard = card;
+      if (card) card.classList.add('context-open');
+    }
+
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const card = e.target.closest('.sound-card, .rail-sound');
+      if (card) {
+        const id = Number(card.dataset.id);
+        if (contextMenu && contextMenu.classList.contains('show')) {
+          closeContextMenu();
+          setTimeout(() => {
+            openContextMenu(e.clientX, e.clientY, id, card);
+          }, 180);
+        } else {
+          openContextMenu(e.clientX, e.clientY, id, card);
+        }
+      } else {
+        closeContextMenu();
+      }
+    });
+
+    if (contextEdit) {
+      contextEdit.addEventListener('click', () => {
+        if (activeContextId) openEditModal(activeContextId);
+        closeContextMenu();
+      });
+    }
+
+    if (contextInfo) {
+      contextInfo.addEventListener('click', () => {
+        if (activeContextId) openInfoModal(activeContextId);
+        closeContextMenu();
+      });
+    }
+
+    if (contextDelete) {
+      contextDelete.addEventListener('click', () => {
+        if (activeContextId) {
+          removeSound(activeContextId);
+        }
+        closeContextMenu();
+      });
+    }
 
     function updateSortUI() {
       const mode = SORT_MODES[currentSortIdx];
@@ -1028,7 +1121,7 @@
       });
       li.querySelector('.info').addEventListener('click', (e) => { e.stopPropagation(); openInfoModal(s.id); });
       li.querySelector('.edit').addEventListener('click', (e) => { e.stopPropagation(); openEditModal(s.id); });
-      li.querySelector('.delete').addEventListener('click', (e) => { e.stopPropagation(); removeSound(s.id, li); });
+      li.querySelector('.delete').addEventListener('click', (e) => { e.stopPropagation(); removeSound(s.id); });
       attachCardDrag(li);
       return li;
     }
@@ -1558,12 +1651,13 @@
       return { root, update, setPlayState };
     }
 
-    function removeSound(id, el) {
+    function removeSound(id) {
       if (!soundList) return;
       const before = captureRects(soundList);
       const beforeRail = railSounds ? captureRects(railSounds) : null;
 
-      el.classList.add('removing');
+      const mainEl = soundList.querySelector(`.sound-card[data-id="${id}"]`);
+      if (mainEl) mainEl.classList.add('removing');
 
       let railEl = null;
       if (railSounds) {

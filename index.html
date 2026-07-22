@@ -242,8 +242,9 @@
       <div class="modal-header">
         <h3 id="infoTitle">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="color: var(--text-mute); display: block;">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
           </svg>
           <span class="modal-title-sep"></span>
           <span>Track Info</span>
@@ -276,6 +277,30 @@
 
   <!-- Hidden file input (driven by buttons) -->
   <input type="file" id="fileInput" accept=".mp3,.ogg,.wav,.flac,audio/mpeg,audio/ogg,audio/wav,audio/x-wav,audio/flac,audio/x-flac" multiple hidden />
+
+  <!-- Context Menu -->
+  <div class="context-menu" id="contextMenu" aria-hidden="true">
+    <button class="context-item" id="contextEdit">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      <div class="context-item-sep"></div> Edit Name
+    </button>
+    <button class="context-item" id="contextInfo">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>
+      </svg>
+      <div class="context-item-sep"></div> Info
+    </button>
+    <button class="context-item context-danger" id="contextDelete">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+      </svg>
+      <div class="context-item-sep"></div> Delete
+    </button>
+  </div>
 
   <script src="./script.js" defer></script>
 </body>
