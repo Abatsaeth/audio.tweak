@@ -86,8 +86,11 @@
       </svg>`,
     infoType: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M7 7h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="3" cy="17" r="1.5" fill="currentColor"/>
+        <path d="M4 17v-3a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="11" cy="17" r="1.5" fill="currentColor"/>
       </svg>`,
     infoMime: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -95,7 +98,16 @@
       </svg>`,
     infoSize: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="22" y1="12" x2="2" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line>
+        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+        <line x1="6" y1="16" x2="6.01" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line>
+        <line x1="10" y1="16" x2="10.01" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line>
+      </svg>`,
+    infoSamples: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="5" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="19" cy="5" r="1.5" fill="currentColor"/>
+        <circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
+        <circle cx="5" cy="19" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/><circle cx="19" cy="19" r="1.5" fill="currentColor"/>
       </svg>`,
     infoClock: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1926,7 +1938,7 @@
         fields.push(
           { label: 'Sample Rate', icon: ICONS.infoSampleRate, val: 'Analyzing...', help: 'The number of audio samples carried per second.' },
           { label: 'Channels', icon: ICONS.infoSliders, val: 'Analyzing...', help: 'The number of independent audio channels (e.g., Mono, Stereo).' },
-          { label: 'Total Samples', icon: ICONS.infoDatabase, val: 'Analyzing...', help: 'The total number of individual audio samples in the file.' },
+          { label: 'Total Samples', icon: ICONS.infoSamples, val: 'Analyzing...', help: 'The total number of individual audio samples in the file.' },
           { label: 'Peak Level', icon: ICONS.infoPeakLevel, val: 'Analyzing...', help: 'The highest amplitude level reached in the audio signal.' },
           { label: 'RMS Loudness', icon: ICONS.infoLoudness, val: 'Analyzing...', help: 'The root mean square, indicating the average perceived loudness.' }
         );
@@ -1939,7 +1951,7 @@
         fields.push(
           { label: 'Sample Rate', icon: ICONS.infoSampleRate, val: sr, help: 'The number of audio samples carried per second.' },
           { label: 'Channels', icon: ICONS.infoSliders, val: ch, help: 'The number of independent audio channels (e.g., Mono, Stereo).' },
-          { label: 'Total Samples', icon: ICONS.infoDatabase, val: smp, help: 'The total number of individual audio samples in the file.' },
+          { label: 'Total Samples', icon: ICONS.infoSamples, val: smp, help: 'The total number of individual audio samples in the file.' },
           { label: 'Peak Level', icon: ICONS.infoPeakLevel, val: pk, help: 'The highest amplitude level reached in the audio signal.' },
           { label: 'RMS Loudness', icon: ICONS.infoLoudness, val: rms, help: 'The root mean square, indicating the average perceived loudness.' }
         );
