@@ -2019,11 +2019,12 @@ body.has-player .brand { opacity: 0.35; }
   transition-duration: 100ms;
 }
 
-.info-help-btn.active {
-  background: rgb(255 255 255 / 12%);
-  border-color: var(--red);
-  color: var(--red);
-  box-shadow: var(--glow-red);
+.info-help-btn.active,
+.info-help-btn.active:hover {
+  background: rgb(226 52 74 / 18%);
+  border-color: rgb(226 52 74 / 45%);
+  color: #fff;
+  box-shadow: 0 0 16px rgb(226 52 74 / 32%);
   transform: translateY(-1px) scale(1.06);
 }
 
