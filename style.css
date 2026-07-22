@@ -2019,6 +2019,14 @@ body.has-player .brand { opacity: 0.35; }
   transition-duration: 100ms;
 }
 
+.info-help-btn.active {
+  background: rgb(255 255 255 / 12%);
+  border-color: var(--red);
+  color: var(--red);
+  box-shadow: var(--glow-red);
+  transform: translateY(-1px) scale(1.06);
+}
+
 .info-tooltip {
   position: absolute;
   right: 44px;
@@ -2044,7 +2052,6 @@ body.has-player .brand { opacity: 0.35; }
   z-index: 10;
 }
 
-.info-help-btn:hover + .info-tooltip,
 .info-tooltip.show {
   opacity: 1;
   visibility: visible;
@@ -2111,6 +2118,9 @@ body.has-player .brand { opacity: 0.35; }
 }
 
 .info-copy-btn.copied {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
   color: #fff;
   pointer-events: none;
 }

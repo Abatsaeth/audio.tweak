@@ -1481,7 +1481,6 @@
       let lastCurrentTime = 0;
 
       timesRow.style.cursor = 'pointer';
-      timesRow.title = 'Toggle remaining time';
       timesRow.addEventListener('click', (e) => {
         // Only if we have a valid duration
         if (!duration) return;
@@ -1648,13 +1647,7 @@
         const p = pctFromEvent(e);
         if (duration > 0) {
           const t = p * duration;
-          const timeFmt = fmt(t);
-          if (timeFmt !== lastTimeFmt) {
-            label.textContent = timeFmt;
-            lastTimeFmt = timeFmt;
-          }
-          setProgress(p);
-          smartHide(p);
+          update(t, duration);
         }
         return p * (duration || 0);
       }
@@ -2035,10 +2028,15 @@
           if (tooltip && tooltip.classList.contains('info-tooltip')) {
             const isShowing = tooltip.classList.contains('show');
             document.querySelectorAll('.info-tooltip.show').forEach(el => el.classList.remove('show'));
-            if (!isShowing) tooltip.classList.add('show');
+            document.querySelectorAll('.info-help-btn.active').forEach(el => el.classList.remove('active'));
+            if (!isShowing) {
+              tooltip.classList.add('show');
+              helpBtn.classList.add('active');
+            }
           }
         } else {
           document.querySelectorAll('.info-tooltip.show').forEach(el => el.classList.remove('show'));
+          document.querySelectorAll('.info-help-btn.active').forEach(el => el.classList.remove('active'));
         }
 
         const copyBtn = e.target.closest('.info-copy-btn');
