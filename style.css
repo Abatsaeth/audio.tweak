@@ -710,6 +710,8 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
 
 .sort-wrap {
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sort-control {
@@ -856,9 +858,9 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   position: absolute;
   top: 40px;
   bottom: 14px;
-  right: 6px;
-  width: 9px;
-  border-radius: 4px;
+  right: 4px;
+  width: 13px;
+  border-radius: 6px;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--d-mid) var(--ease-out);
@@ -870,7 +872,7 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   top: 0; left: 0;
   width: 100%;
   background: var(--hairline-2);
-  border-radius: 4px;
+  border-radius: 6px;
   min-height: 20px;
   transition: background var(--d-fast) var(--ease-out), height var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out);
 }
@@ -1731,7 +1733,6 @@ body.has-player .brand { opacity: 0.35; }
 .modal-card {
   position: relative;
   width: min(420px, 92vw);
-  padding: 24px 22px 20px;
   border-radius: var(--radius-l);
   background: linear-gradient(180deg, rgb(22 22 28 / 88%), rgb(14 14 18 / 88%));
   border: 1px solid var(--hairline-2);
@@ -1756,12 +1757,21 @@ body.has-player .brand { opacity: 0.35; }
   pointer-events: none;
 }
 
+.modal-header {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.modal-body {
+  padding: 20px 22px;
+}
+
 .modal-card h3 {
   position: relative;
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 600;
-  margin-bottom: 14px;
+  margin-bottom: 0;
   letter-spacing: -0.01em;
 }
 
@@ -1790,8 +1800,6 @@ body.has-player .brand { opacity: 0.35; }
 
 .info-content-wrap {
   position: relative;
-  margin-top: 14px;
-  margin-bottom: 24px;
 }
 
 .info-content-wrap:hover .custom-scrollbar.active,
@@ -1812,7 +1820,7 @@ body.has-player .brand { opacity: 0.35; }
   gap: 12px;
   font-size: 14px;
   color: var(--text-soft);
-  max-height: 40vh;
+  max-height: 60vh;
   overflow-y: auto;
   padding-right: 14px;
   scrollbar-width: none;
@@ -1831,7 +1839,93 @@ body.has-player .brand { opacity: 0.35; }
   background: rgb(255 255 255 / 3%);
   border: 1px solid var(--hairline);
   border-radius: 10px;
+  position: relative;
   overflow: hidden;
+}
+
+.info-val-wrap {
+  width: calc(100% - 44px);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.info-val-wrap.long {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+}
+
+.info-val {
+  display: inline-block;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.info-val-wrap.long .info-val {
+  animation: topbar-marquee 11s ease-in-out infinite;
+}
+
+.info-copy-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background var(--d-fast) var(--ease-out), color var(--d-fast) var(--ease-out), border-color var(--d-fast) var(--ease-out);
+}
+
+.info-copy-btn:hover {
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+  border-color: var(--hairline-2);
+}
+
+.info-copy-btn.copied {
+  color: #fff;
+  pointer-events: none;
+}
+
+.info-copy-btn .icon-copy,
+.info-copy-btn .icon-check {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+
+.info-copy-btn .icon-check {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.info-copy-btn.copied .icon-copy {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.info-copy-btn.copied .icon-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.info-copy-btn:active:not(.copied) {
+  transform: scale(0.95);
 }
 .info-label {
   display: flex;
@@ -1839,6 +1933,13 @@ body.has-player .brand { opacity: 0.35; }
   gap: 10px;
   font-weight: 500;
   color: var(--text-muted);
+  line-height: 1;
+}
+.info-label span:not(.info-sep) {
+  /* No transform needed */
+}
+.info-label svg, .info-sep {
+  transform: translateY(1px);
 }
 .info-label svg {
   color: var(--text-faint);
@@ -1850,18 +1951,13 @@ body.has-player .brand { opacity: 0.35; }
   background: var(--hairline-2);
   flex-shrink: 0;
 }
-.info-val {
-  color: #fff;
-  max-width: 100%;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.modal-actions { position: relative; display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.modal-actions { position: relative; display: flex; justify-content: center; gap: 22px; padding: 0 22px 22px; }
+
+.modal-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
 
 .btn {
   display: inline-flex;

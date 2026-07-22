@@ -91,48 +91,50 @@
             <input type="text" class="searchbar-input" id="searchInput" aria-label="Search" />
           </div>
           <div class="meta-right">
-            <div class="sort-wrap">
-              <div class="sort-control">
-                <button class="sort-btn-main" id="orderBtnToggle" aria-label="Toggle sort order">
-                  <div class="icon-transition-wrap">
-                    <svg id="iconAsc" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                    <svg id="iconDesc" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-                  </div>
-                </button>
-                <div class="sort-divider"></div>
-                <button class="sort-btn-main" id="sortBtnMain" aria-label="Sort by">
-                  <div class="icon-transition-wrap" id="sortBtnMainIconWrap">
-                    <svg id="iconSortName" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
-                    <svg id="iconSortType" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                    <svg id="iconSortSize" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                    <svg id="iconSortDuration" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  </div>
-                </button>
-                <div class="sort-divider"></div>
-                <button class="sort-btn-drop" id="sortBtnDrop" aria-label="Sort options">
-                  <div class="icon-transition-wrap" id="sortBtnDropIconWrap">
-                    <svg id="iconSortDown" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-                    <svg id="iconSortUp" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
-                  </div>
-                </button>
-              </div>
-              <div class="sort-menu" id="sortMenu" aria-hidden="true">
-                <button class="sort-item active" data-sort="name">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
-                  <div class="sort-item-sep"></div> A-Z
-                </button>
-                <button class="sort-item" data-sort="type">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                  <div class="sort-item-sep"></div> File Type
-                </button>
-                <button class="sort-item" data-sort="size">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                  <div class="sort-item-sep"></div> Size
-                </button>
-                <button class="sort-item" data-sort="duration">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  <div class="sort-item-sep"></div> Duration
-                </button>
+            <div class="meta-sort-group">
+              <div class="sort-wrap" id="sortWrap">
+                <div class="sort-control">
+                  <button class="sort-btn-main" id="orderBtnToggle" aria-label="Toggle order">
+                    <div class="icon-transition-wrap" id="orderBtnToggleIconWrap">
+                      <svg id="iconAsc" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                      <svg id="iconDesc" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    </div>
+                  </button>
+                  <div class="sort-divider"></div>
+                  <button class="sort-btn-main" id="sortBtnMain" aria-label="Sort by">
+                    <div class="icon-transition-wrap" id="sortBtnMainIconWrap">
+                      <svg id="iconSortName" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                      <svg id="iconSortType" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                      <svg id="iconSortSize" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                      <svg id="iconSortDuration" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                  </button>
+                  <div class="sort-divider"></div>
+                  <button class="sort-btn-drop" id="sortBtnDrop" aria-label="Sort options">
+                    <div class="icon-transition-wrap" id="sortBtnDropIconWrap">
+                      <svg id="iconSortDown" class="transition-icon active" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                      <svg id="iconSortUp" class="transition-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                    </div>
+                  </button>
+                </div>
+                <div class="sort-menu" id="sortMenu" aria-hidden="true">
+                  <button class="sort-item active" data-sort="name">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                    <div class="sort-item-sep"></div> A-Z
+                  </button>
+                  <button class="sort-item" data-sort="type">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                    <div class="sort-item-sep"></div> File Type
+                  </button>
+                  <button class="sort-item" data-sort="size">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    <div class="sort-item-sep"></div> Size
+                  </button>
+                  <button class="sort-item" data-sort="duration">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <div class="sort-item-sep"></div> Duration
+                  </button>
+                </div>
               </div>
             </div>
             <span class="library-count" id="libraryCount">0</span>
@@ -206,8 +208,12 @@
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="modal-glow"></div>
-      <h3 id="editTitle">Rename</h3>
-      <input type="text" id="editInput" maxlength="60" placeholder="New name" />
+      <div class="modal-header">
+        <h3 id="editTitle">Rename</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="editInput" maxlength="60" placeholder="New name" />
+      </div>
       <div class="modal-actions">
         <button class="btn ghost" data-close>Cancel</button>
         <button class="btn primary" id="editSave">Save</button>
@@ -222,15 +228,17 @@
     <div class="modal-backdrop" data-close></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
       <div class="modal-glow"></div>
-      <h3 id="infoTitle">Track Info</h3>
-      <div class="info-content-wrap" id="infoContentWrap">
+      <div class="modal-header">
+        <h3 id="infoTitle">Track Info</h3>
+      </div>
+      <div class="info-content-wrap modal-body" id="infoContentWrap">
         <div class="info-content" id="infoContent"></div>
         <div class="custom-scrollbar" id="infoScrollbar">
           <div class="custom-scrollbar-thumb" id="infoScrollbarThumb"></div>
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn primary" data-close style="width: 100%;">Close</button>
+        <button class="btn primary" data-close>Close</button>
       </div>
     </div>
   </div>

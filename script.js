@@ -60,6 +60,15 @@
 
   // -------- Icons (inline SVG, no emojis, no external requests) --------
   const ICONS = {
+    check: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    copy: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
     infoTitle: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -86,6 +95,10 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
         <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoBitrate: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
       </svg>`,
     infoCalendar: `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -766,7 +779,7 @@
     }
 
     document.addEventListener('click', (e) => {
-      if (sortMenu && sortMenu.classList.contains('show') && !e.target.closest('.sort-wrap')) {
+      if (sortMenu && sortMenu.classList.contains('show') && !e.target.closest('#sortWrap')) {
         sortMenu.classList.remove('show');
         $('#iconSortDown').classList.add('active');
         $('#iconSortUp').classList.remove('active');
@@ -1721,19 +1734,36 @@
       const exactBytes = new Intl.NumberFormat().format(s.size) + ' bytes';
       const bitrate = s.duration ? Math.round((s.size * 8) / s.duration / 1000) + ' kbps' : 'Unknown';
       
-      infoContent.innerHTML = `
-        <div class="info-row"><span class="info-label">${ICONS.infoTitle} <span class="info-sep"></span> Name</span><span class="info-val" title="${s.name}">${s.name}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Format</span><span class="info-val">${s.format}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoMime} <span class="info-sep"></span> MIME Type</span><span class="info-val" title="${mimeType}">${mimeType}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoSize} <span class="info-sep"></span> Size</span><span class="info-val">${fmtMB(s.size)} (${exactBytes})</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoClock} <span class="info-sep"></span> Duration</span><span class="info-val">${fmtDuration(s.duration)} (${s.duration.toFixed(3)}s)</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoType} <span class="info-sep"></span> Bitrate</span><span class="info-val">${bitrate}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoCalendar} <span class="info-sep"></span> Added</span><span class="info-val">${dateStr}</span></div>
-        <div class="info-row"><span class="info-label">${ICONS.infoDownload} <span class="info-sep"></span> Downloaded</span><span class="info-val">${modifiedStr}</span></div>
-      `;
+      const fields = [
+        { label: 'Name', icon: ICONS.infoTitle, val: s.name },
+        { label: 'Format', icon: ICONS.infoType, val: s.format },
+        { label: 'MIME Type', icon: ICONS.infoMime, val: mimeType },
+        { label: 'Size', icon: ICONS.infoSize, val: `${fmtMB(s.size)} (${exactBytes})` },
+        { label: 'Duration', icon: ICONS.infoClock, val: `${fmtDuration(s.duration)} (${s.duration.toFixed(3)}s)` },
+        { label: 'Bitrate', icon: ICONS.infoBitrate, val: bitrate },
+        { label: 'Added', icon: ICONS.infoCalendar, val: dateStr },
+        { label: 'Downloaded', icon: ICONS.infoDownload, val: modifiedStr }
+      ];
+
+      infoContent.innerHTML = fields.map(f => `
+        <div class="info-row">
+          <span class="info-label">${f.icon} <span class="info-sep"></span> <span>${f.label}</span></span>
+          <div class="info-val-wrap">
+            <span class="info-val" title="${escapeHTML(f.val)}">${escapeHTML(f.val)}</span>
+          </div>
+          <button class="info-copy-btn" data-copy="${escapeHTML(f.val)}" aria-label="Copy ${f.label}">
+            <span class="icon-copy">${ICONS.copy}</span>
+            <span class="icon-check">${ICONS.check}</span>
+          </button>
+        </div>
+      `).join('');
       infoModal.setAttribute('aria-hidden', 'false');
       requestAnimationFrame(() => {
         infoModal.classList.add('open');
+        const wraps = Array.from(infoContent.querySelectorAll('.info-val-wrap'));
+        const inners = Array.from(infoContent.querySelectorAll('.info-val'));
+        const pairs = wraps.map((w, i) => ({ wrapEl: w, innerEl: inners[i] }));
+        checkMarqueeBatch(pairs);
         if (typeof updateInfoScrollbar === 'function') requestAnimationFrame(updateInfoScrollbar);
       });
     }
@@ -1746,7 +1776,27 @@
     }
 
     if (editModal) editModal.addEventListener('click', (e) => { if (e.target.matches('[data-close]')) closeEditModal(); });
-    if (infoModal) infoModal.addEventListener('click', (e) => { if (e.target.matches('[data-close]')) closeInfoModal(); });
+    if (infoModal) {
+      infoModal.addEventListener('click', async (e) => {
+        if (e.target.matches('[data-close]')) closeInfoModal();
+        const copyBtn = e.target.closest('.info-copy-btn');
+        if (copyBtn && !copyBtn.classList.contains('copied')) {
+          const text = copyBtn.dataset.copy;
+          if (text) {
+            try {
+              await navigator.clipboard.writeText(text);
+              showToast('Copied to clipboard', 'success');
+              copyBtn.classList.add('copied');
+              setTimeout(() => {
+                copyBtn.classList.remove('copied');
+              }, 1500);
+            } catch (err) {
+              showToast('Failed to copy', 'error');
+            }
+          }
+        }
+      });
+    }
     if (editSave)  editSave.addEventListener('click', commitEdit);
     if (editInput) editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commitEdit(); });
 
