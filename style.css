@@ -1198,6 +1198,10 @@ code   { font-family: var(--font-mono); font-size: 0.86em; padding: 1px 6px; bac
   transform-origin: left center;
 }
 
+.sound-name-wrap.long {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+}
 .sound-name-wrap.long .sound-name {
   animation: topbar-marquee 11s ease-in-out infinite;
   will-change: transform;
@@ -1495,6 +1499,10 @@ body.has-player .brand { opacity: 0.35; }
 }
 .topbar-name-inner.swapping { opacity: 0; transform: translateY(-4px); }
 
+.topbar-name.long {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+}
 .topbar-name.long .topbar-name-inner {
   animation: topbar-marquee 11s ease-in-out infinite;
   will-change: transform;
