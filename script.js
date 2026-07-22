@@ -109,6 +109,22 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`,
+    infoWave: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M2 12h4l3-9 5 18 3-9h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoActivity: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    infoSliders: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <line x1="4" y1="21" x2="4" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="4" y1="10" x2="4" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="12" y1="21" x2="12" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="12" y1="8" x2="12" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="20" y1="21" x2="20" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="20" y1="12" x2="20" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="1" y1="14" x2="7" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="9" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line><line x1="17" y1="16" x2="23" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></line>
+      </svg>`,
+    infoDatabase: `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>`,
     logo: `
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
@@ -234,6 +250,34 @@
     a.addEventListener('loadedmetadata', () => fin(a.duration || 0));
     a.addEventListener('error', () => fin(0));
     setTimeout(() => fin(0), 4000);
+  });
+  const getAdvancedMetadata = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const buffer = await ctx.decodeAudioData(e.target.result);
+        let peak = 0;
+        for (let c = 0; c < buffer.numberOfChannels; c++) {
+          const data = buffer.getChannelData(c);
+          for (let i = 0; i < data.length; i++) {
+            const abs = Math.abs(data[i]);
+            if (abs > peak) peak = abs;
+          }
+        }
+        resolve({
+          sampleRate: buffer.sampleRate,
+          channels: buffer.numberOfChannels,
+          samples: buffer.length,
+          peak: peak,
+          peakDB: peak > 0 ? 20 * Math.log10(peak) : -Infinity
+        });
+      } catch (err) {
+        resolve(null);
+      }
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file);
   });
   const escapeHTML = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -1722,10 +1766,24 @@
       editingId = null;
     }
     
+    let currentInfoId = null;
+
     function openInfoModal(id) {
       if (!infoModal || !infoContent) return;
       const s = sounds.find((x) => x.id === id);
       if (!s) return;
+      currentInfoId = id;
+
+      if (!s.advMeta && s.file) {
+        s.advMeta = 'loading';
+        getAdvancedMetadata(s.file).then(meta => {
+          s.advMeta = meta || 'error';
+          if (infoModal.classList.contains('open') && currentInfoId === s.id) {
+            openInfoModal(s.id);
+          }
+        });
+      }
+
       const dateStr = s.addedAt ? (new Date(s.addedAt).toLocaleDateString() + ' ' + new Date(s.addedAt).toLocaleTimeString()) : 'Unknown';
       const modifiedStr = s.file && s.file.lastModified ? (new Date(s.file.lastModified).toLocaleDateString() + ' ' + new Date(s.file.lastModified).toLocaleTimeString()) : 'Unknown';
       const mimeType = s.file && s.file.type ? s.file.type : 'audio/' + s.format.toLowerCase();
@@ -1744,6 +1802,28 @@
         { label: 'Added', icon: ICONS.infoCalendar, val: dateStr },
         { label: 'Downloaded', icon: ICONS.infoDownload, val: modifiedStr }
       ];
+
+      if (s.advMeta === 'loading') {
+        fields.push(
+          { label: 'Sample Rate', icon: ICONS.infoActivity, val: 'Analyzing...' },
+          { label: 'Channels', icon: ICONS.infoSliders, val: 'Analyzing...' },
+          { label: 'Total Samples', icon: ICONS.infoDatabase, val: 'Analyzing...' },
+          { label: 'Peak Level', icon: ICONS.infoWave, val: 'Analyzing...' }
+        );
+      } else if (s.advMeta && s.advMeta !== 'error') {
+        const sr = new Intl.NumberFormat().format(s.advMeta.sampleRate) + ' Hz';
+        const ch = s.advMeta.channels === 1 ? '1 (Mono)' : s.advMeta.channels === 2 ? '2 (Stereo)' : `${s.advMeta.channels} Channels`;
+        const smp = new Intl.NumberFormat().format(s.advMeta.samples);
+        const pk = s.advMeta.peakDB === -Infinity ? '-∞ dB' : `${s.advMeta.peakDB.toFixed(2)} dB`;
+        fields.push(
+          { label: 'Sample Rate', icon: ICONS.infoActivity, val: sr },
+          { label: 'Channels', icon: ICONS.infoSliders, val: ch },
+          { label: 'Total Samples', icon: ICONS.infoDatabase, val: smp },
+          { label: 'Peak Level', icon: ICONS.infoWave, val: pk }
+        );
+      } else if (s.advMeta === 'error') {
+        fields.push({ label: 'Analysis', icon: ICONS.infoWave, val: 'Failed to decode audio data' });
+      }
 
       infoContent.innerHTML = fields.map(f => `
         <div class="info-row">
