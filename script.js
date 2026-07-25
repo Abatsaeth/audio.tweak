@@ -364,7 +364,7 @@
           F.addEventListener("click", () => {
             i &&
               (yt(),
-              u && (u.currentTime = 0),
+              u && ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)),
               (vt = 0),
               (lastAudioTime = 0),
               q(0, k));
@@ -375,9 +375,9 @@
             if (!e.length) return;
             const t = e.findIndex((e) => e.id === i);
             u && u.currentTime > 3
-              ? (u.currentTime = 0)
+              ? ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0))
               : t <= 0
-                ? u && (u.currentTime = 0)
+                ? u && ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0))
                 : xt(e[t - 1].id, !0);
           })(),
         ),
@@ -391,7 +391,7 @@
             u &&
               (u.ended ||
                 (u.paused && k > 0 && Math.abs(u.currentTime - k) < 0.5)) &&
-              (2 === d ? ((u.currentTime = 0), bt()) : 1 === d && Lt()));
+              (2 === d ? (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), bt()) : 1 === d && Lt()));
         }),
         H(0),
         j(!1),
@@ -1203,7 +1203,7 @@
           } while (n === t);
       else n = (t + 1) % e.length;
       n === t
-        ? u && ((u.currentTime = 0), u.play().catch(() => {}))
+        ? u && (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), u.play().catch(() => {}))
         : xt(e[n].id, !0);
     }
     function xt(e, t) {
@@ -1214,7 +1214,7 @@
     }
     function Mt() {
       if (2 === d && u)
-        return ((u.currentTime = 0), void u.play().catch(() => {}));
+        return (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), void u.play().catch(() => {}));
       1 === d ? Lt() : yt();
     }
     function Et() {
@@ -1256,12 +1256,12 @@
         if (Ye !== e.id)
           return Fe && Fe.classList.contains("show")
             ? (clearTimeout(Pe),
-              je.classList.add("fading"),
+              je.classList.add("fading"), document.querySelector(".player-progress") && (document.querySelector(".player-progress").classList.add("returning"), setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"), 250)), document.querySelector(".pp-time-end") && document.querySelector(".pp-time-end").classList.add("fading"),
               void (Pe = setTimeout(() => {
                 (St(e),
                   (Ye = e.id),
                   requestAnimationFrame(() => {
-                    je.classList.remove("fading");
+                    je.classList.remove("fading"); document.querySelector(".pp-time-end") && document.querySelector(".pp-time-end").classList.remove("fading");
                   }));
               }, 200)))
             : (St(e), void (Ye = e.id));
