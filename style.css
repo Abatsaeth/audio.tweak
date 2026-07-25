@@ -2363,6 +2363,10 @@ body.has-player .brand {
   letter-spacing: -0.01em;
   line-height: 1;
 }
+.modal-card h3 svg,
+.modal-title-sep {
+  transform: translateY(1px);
+}
 .modal-title-sep {
   width: 1px;
   height: 16px;
