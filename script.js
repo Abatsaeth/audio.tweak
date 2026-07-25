@@ -784,7 +784,6 @@
           e("#iconSortUp").classList.remove("active")),
           Ce &&
             Ce.classList.contains("show") &&
-            !t.target.closest(".context-menu") &&
             st());
       }));
     let rt = null,
@@ -925,7 +924,7 @@
         (o.querySelector(".size").textContent = H(n.size)),
         (o.querySelector(".duration").textContent = R(n.duration)),
         o.querySelector(".sound-thumb").addEventListener("click", (e) => {
-          (e.stopPropagation(), mt(n.id));
+          (e.stopPropagation(), st(), mt(n.id));
         }),
         o.addEventListener("click", (e) => {
           o.dataset.justDragged ||
@@ -942,13 +941,13 @@
             })(n.id);
         }),
         o.querySelector(".info").addEventListener("click", (e) => {
-          (e.stopPropagation(), jt(n.id));
+          (e.stopPropagation(), st(), jt(n.id));
         }),
         o.querySelector(".edit").addEventListener("click", (e) => {
-          (e.stopPropagation(), qt(n.id));
+          (e.stopPropagation(), st(), qt(n.id));
         }),
         o.querySelector(".delete").addEventListener("click", (e) => {
-          (e.stopPropagation(), $t(n.id));
+          (e.stopPropagation(), st(), $t(n.id));
         }),
         (function (n) {
           let o = 0,
