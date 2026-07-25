@@ -850,7 +850,7 @@ code {
   background: 0 0;
   border: none;
   outline: 0;
-  color: var(--text-base);
+  color: var(--text);
   font-family: var(--font-body);
   font-size: 11px;
   padding-left: 36px;
@@ -986,7 +986,7 @@ code {
   color: var(--text-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   letter-spacing: 0;
   text-transform: none;
   transition:
@@ -1044,7 +1044,7 @@ code {
   color: var(--text-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   letter-spacing: 0;
   text-transform: none;
   transition:
@@ -2619,7 +2619,7 @@ body.has-player .brand {
   align-items: center;
   gap: 10px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-mute);
   line-height: 1;
 }
 .info-label svg,

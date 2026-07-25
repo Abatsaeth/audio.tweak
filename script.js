@@ -12,6 +12,7 @@
       "audio/flac",
       "audio/x-flac",
     ];
+  function toggleTimeEndFading(a){const t=e(".pp-time-end");if(t)t.classList.toggle("fading",a);} function retProg() { const p = e(".player-progress"); if(p){ p.classList.add("returning"); setTimeout(() => p.classList.remove("returning"), 250); } }
   let r = [],
     i = null,
     s = 1,
@@ -331,9 +332,10 @@
                   '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">\n        <path d="M17 1l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M11 10h1v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n      </svg>'),
                 w.setAttribute("data-tip", "Repeat: one")));
       }
+      let trackRect = null;
       function R(e) {
         const t = (function (e) {
-          const t = r.getBoundingClientRect(),
+          const t = trackRect || r.getBoundingClientRect(),
             n = (e.touches ? e.touches[0].clientX : e.clientX) - t.left;
           return Math.max(0, Math.min(1, n / t.width));
         })(e);
@@ -341,6 +343,7 @@
       }
       function I(e) {
         if (!k) return;
+        trackRect = r.getBoundingClientRect();
         ((m = !0), n.classList.add("dragging"));
         const t = R(e);
         (u && (u.currentTime = t), e.preventDefault());
@@ -352,7 +355,7 @@
       }
       function Y() {
         m &&
-          ((m = !1),
+          ((m = !1), trackRect = null,
           n.classList.remove("dragging"),
           u && Ne.update(u.currentTime, u.duration || 0));
       }
@@ -364,7 +367,7 @@
           F.addEventListener("click", () => {
             i &&
               (yt(),
-              u && ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)),
+              u && (retProg(), u.currentTime = 0),
               (vt = 0),
               (lastAudioTime = 0),
               q(0, k));
@@ -375,9 +378,9 @@
             if (!e.length) return;
             const t = e.findIndex((e) => e.id === i);
             u && u.currentTime > 3
-              ? ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0))
+              ? (retProg(), u.currentTime = 0)
               : t <= 0
-                ? u && ((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0))
+                ? u && (retProg(), u.currentTime = 0)
                 : xt(e[t - 1].id, !0);
           })(),
         ),
@@ -391,7 +394,7 @@
             u &&
               (u.ended ||
                 (u.paused && k > 0 && Math.abs(u.currentTime - k) < 0.5)) &&
-              (2 === d ? (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), bt()) : 1 === d && Lt()));
+              (2 === d ? ((retProg(), u.currentTime = 0), bt()) : 1 === d && Lt()));
         }),
         H(0),
         j(!1),
@@ -972,6 +975,7 @@
             c = requestAnimationFrame(u);
           }
           n.addEventListener("mousedown", (e) => {
+            let hoverEl = null, hoverRect = null;
             function p(e) {
               if (((d = e.clientY), !s)) {
                 const t = e.clientX - o,
@@ -1012,7 +1016,8 @@
                   }),
                   r && r !== n)
                 ) {
-                  const t = r.getBoundingClientRect(),
+                  if (hoverEl !== r) { hoverEl = r; hoverRect = r.getBoundingClientRect(); }
+                  const t = hoverRect,
                     n = e.clientY < t.top + t.height / 2;
                   (r.classList.toggle("drop-above", n),
                     r.classList.toggle("drop-below", !n));
@@ -1203,7 +1208,7 @@
           } while (n === t);
       else n = (t + 1) % e.length;
       n === t
-        ? u && (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), u.play().catch(() => {}))
+        ? u && ((retProg(), u.currentTime = 0), u.play().catch(() => {}))
         : xt(e[n].id, !0);
     }
     function xt(e, t) {
@@ -1214,7 +1219,7 @@
     }
     function Mt() {
       if (2 === d && u)
-        return (((document.querySelector(".player-progress")&&(document.querySelector(".player-progress").classList.add("returning"),setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"),250)),u.currentTime=0)), void u.play().catch(() => {}));
+        return ((retProg(), u.currentTime = 0), void u.play().catch(() => {}));
       1 === d ? Lt() : yt();
     }
     function Et() {
@@ -1256,12 +1261,12 @@
         if (Ye !== e.id)
           return Fe && Fe.classList.contains("show")
             ? (clearTimeout(Pe),
-              je.classList.add("fading"), document.querySelector(".player-progress") && (document.querySelector(".player-progress").classList.add("returning"), setTimeout(()=>document.querySelector(".player-progress")&&document.querySelector(".player-progress").classList.remove("returning"), 250)), document.querySelector(".pp-time-end") && document.querySelector(".pp-time-end").classList.add("fading"),
+              je.classList.add("fading"), retProg(), toggleTimeEndFading(!0),
               void (Pe = setTimeout(() => {
                 (St(e),
                   (Ye = e.id),
                   requestAnimationFrame(() => {
-                    je.classList.remove("fading"); document.querySelector(".pp-time-end") && document.querySelector(".pp-time-end").classList.remove("fading");
+                    je.classList.remove("fading"); toggleTimeEndFading(!1);
                   }));
               }, 200)))
             : (St(e), void (Ye = e.id));
