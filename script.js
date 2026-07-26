@@ -1326,55 +1326,83 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       const n = X(te),
         o = K ? X(K) : null,
         s = te.querySelector(`.sound-card[data-id="${e}"]`);
-      s && s.classList.add("removing");
+      if (s) {
+        const rect = s.getBoundingClientRect();
+        s.style.position = "fixed";
+        s.style.top = `${rect.top}px`;
+        s.style.left = `${rect.left}px`;
+        s.style.width = `${rect.width}px`;
+        s.style.height = `${rect.height}px`;
+        s.style.zIndex = "999";
+        s.style.margin = "0";
+        s.classList.add("removing");
+        document.body.appendChild(s);
+      }
       let a = null;
-      K &&
-        ((a = K.querySelector(`.rail-sound[data-id="${e}"]`)),
-        a && a.classList.add("removing"));
+      if (K) {
+        a = K.querySelector(`.rail-sound[data-id="${e}"]`);
+        if (a) {
+          const rect = a.getBoundingClientRect();
+          a.style.position = "fixed";
+          a.style.top = `${rect.top}px`;
+          a.style.left = `${rect.left}px`;
+          a.style.width = `${rect.width}px`;
+          a.style.height = `${rect.height}px`;
+          a.style.zIndex = "999";
+          a.style.margin = "0";
+          a.classList.add("removing");
+          document.body.appendChild(a);
+        }
+      }
       const c = r.findIndex((t) => t.id === e);
       if (c < 0) return;
       const [d] = r.splice(c, 1);
       try {
         URL.revokeObjectURL(d.url);
       } catch (e) {}
-      (i === e &&
-        ((i = null),
-        u && (u.pause(), u.removeAttribute("src"), u.load()),
-        (l = !1),
-        wt(),
-        Tt(!1)),
-        setTimeout(() => {
-          if (te) {
-            const e = document.createDocumentFragment();
-            for (const t of r) e.appendChild(pt(t));
-            ((te.innerHTML = ""),
-              te.appendChild(e),
-              requestAnimationFrame(() => {
-                const e = [];
-                (t(".sound-card", te).forEach((t) => {
-                  e.push({
-                    wrapEl: t.querySelector(".sound-name-wrap"),
-                    innerEl: t.querySelector(".sound-name"),
-                  });
-                }),
-                  U(e),
-                  Qe());
-              }));
-          }
-          if (K) {
-            const e = document.createDocumentFragment();
-            for (const t of r) e.appendChild(ut(t));
-            ((K.innerHTML = ""), K.appendChild(e));
-          }
-          const e = r.length;
-          (ne && ct(ne, e),
-            G && ct(G, e),
-            de && de.classList.toggle("hide", e > 0),
-            V(n, te),
-            o && K && V(o, K, { duration: 380 }),
-            It(`Removed — ${d.name}`, "danger"),
-            setTimeout(() => requestAnimationFrame(Qe), 450));
-        }, 310));
+      if (i === e) {
+        i = null;
+        if (u) { u.pause(); u.removeAttribute("src"); u.load(); }
+        l = !1;
+        wt();
+        Tt(!1);
+      }
+      if (te) {
+        const frag = document.createDocumentFragment();
+        for (const tr of r) frag.appendChild(pt(tr));
+        te.innerHTML = "";
+        te.appendChild(frag);
+        requestAnimationFrame(() => {
+          const wrapList = [];
+          t(".sound-card", te).forEach((card) => {
+            wrapList.push({
+              wrapEl: card.querySelector(".sound-name-wrap"),
+              innerEl: card.querySelector(".sound-name"),
+            });
+          });
+          U(wrapList);
+          Qe();
+        });
+      }
+      if (K) {
+        const frag = document.createDocumentFragment();
+        for (const tr of r) frag.appendChild(ut(tr));
+        K.innerHTML = "";
+        K.appendChild(frag);
+      }
+      const newLen = r.length;
+      if (ne) ct(ne, newLen);
+      if (G) ct(G, newLen);
+      if (de) de.classList.toggle("hide", newLen > 0);
+      V(n, te);
+      if (o && K) V(o, K, { duration: 380 });
+      It(`Removed — ${d.name}`, "danger");
+      requestAnimationFrame(Qe);
+      setTimeout(() => {
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+        if (a && a.parentNode) a.parentNode.removeChild(a);
+        requestAnimationFrame(Qe);
+      }, 310);
     }
     function qt(e) {
       if (!ye || !Le) return;
