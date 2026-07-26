@@ -1042,7 +1042,7 @@ code {
 .context-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   text-align: left;
   padding: 8px 10px;
   font-size: 11px;
@@ -2376,6 +2376,7 @@ body.has-player .brand {
 
 .modal-title-sep {
   transform: translateY(0px);
+  transform: translateX(0px);
 }
 .modal-title-sep {
   width: 1px;
