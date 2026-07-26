@@ -173,6 +173,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizelegibility;
+  font-synthesis: none;
+  -webkit-text-size-adjust: 100%;
   letter-spacing: 0.005em;
   overflow: hidden;
   scroll-behavior: smooth;
@@ -1021,7 +1023,9 @@ code {
     opacity 180ms,
     transform 180ms,
     visibility 180ms;
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  will-change: transform, opacity;
 }
 .context-menu.show {
   opacity: 1;
