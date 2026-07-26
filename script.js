@@ -12,7 +12,7 @@
       "audio/flac",
       "audio/x-flac",
     ];
-  function toggleTimeEndFading(a){const t=e(".pp-time-end");if(t)t.classList.toggle("fading",a);} function retProg() { const p = e(".player-progress"); if(p){ p.classList.add("returning"); setTimeout(() => p.classList.remove("returning"), 250); } }
+let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a; const t=e(".pp-time-end");if(t)t.classList.toggle("fading",a);} function retProg() { const p = e(".player-progress"); if(p){ p.classList.add("returning"); setTimeout(() => p.classList.remove("returning"), 250); } }
   let r = [],
     i = null,
     s = 1,
@@ -300,7 +300,7 @@
           k !== A && ((s.textContent = "0:00"), (A = k)));
         let n = "";
         ((n = x ? "-" + M(Math.max(0, k - e)) : M(k)),
-          n !== $ && ((a.textContent = n), ($ = n)));
+          n !== $ && !isTimeEndFading && ((a.textContent = n), ($ = n)));
         const r = M(e);
         r !== S && ((o.textContent = r), (S = r));
         const i = k > 0 ? e / k : 0;
@@ -1305,6 +1305,7 @@
                   (Ye = e.id),
                   requestAnimationFrame(() => {
                     je.classList.remove("fading"); toggleTimeEndFading(!1);
+                    if (u && Ne) Ne.update(u.currentTime, u.duration || 0);
                   }));
               }, 200)))
             : (St(e), void (Ye = e.id));
