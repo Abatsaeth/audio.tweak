@@ -781,15 +781,17 @@
             e("#iconSortDown").classList.add("active"),
             e("#iconSortUp").classList.remove("active"));
         }),
-      document.addEventListener("click", (t) => {
+      document.addEventListener("mousedown", (t) => {
         (ce &&
           ce.classList.contains("show") &&
           !t.target.closest("#sortWrap") &&
+          !t.target.closest("#sortMenu") &&
           (ce.classList.remove("show"),
           e("#iconSortDown").classList.add("active"),
           e("#iconSortUp").classList.remove("active")),
           Ce &&
             Ce.classList.contains("show") &&
+            !t.target.closest("#contextMenu") &&
             st());
       }));
     let rt = null,
