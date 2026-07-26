@@ -791,17 +791,40 @@
             st());
       }));
     let rt = null,
-      it = null;
+      it = null,
+      ctxAnchorTop = 0,
+      ctxScrollContainer = null;
     function st() {
       Ce &&
         (Ce.classList.remove("show"),
+        Ce.classList.remove("hidden-by-scroll"),
+        Ce.style.setProperty("--ctx-y", "0px"),
         it && (it.classList.remove("context-open"), (it = null)),
-        (rt = null));
+        (rt = null),
+        (ctxScrollContainer = null));
     }
+    function updateContextMenu() {
+      if (!Ce || !Ce.classList.contains("show") || !it || !ctxScrollContainer) return;
+      const currentAnchorTop = it.getBoundingClientRect().top;
+      const diffY = currentAnchorTop - ctxAnchorTop;
+      Ce.style.setProperty("--ctx-y", `${diffY}px`);
+      const containerRect = ctxScrollContainer.getBoundingClientRect();
+      const anchorRect = it.getBoundingClientRect();
+      const isVisible = anchorRect.top >= containerRect.top && anchorRect.bottom <= containerRect.bottom;
+      if (!isVisible) {
+          Ce.classList.add("hidden-by-scroll");
+      } else {
+          Ce.classList.remove("hidden-by-scroll");
+      }
+    }
+    document.addEventListener("scroll", updateContextMenu, !0);
+    window.addEventListener("resize", updateContextMenu);
     function at(e, t, n, o) {
       Ce &&
         ((Ce.style.left = `${e}px`),
         (Ce.style.top = `${t}px`),
+        Ce.classList.remove("hidden-by-scroll"),
+        Ce.style.setProperty("--ctx-y", "0px"),
         requestAnimationFrame(() => {
           const n = Ce.getBoundingClientRect();
           let o = e,
@@ -815,7 +838,9 @@
         (rt = n),
         it && it.classList.remove("context-open"),
         (it = o),
-        o && o.classList.add("context-open"));
+        o && o.classList.add("context-open"),
+        (ctxScrollContainer = o ? o.closest(".sound-list, .rail-sounds, .library") : null),
+        (ctxAnchorTop = o ? o.getBoundingClientRect().top : 0));
     }
     function lt() {
       const n = g[v];

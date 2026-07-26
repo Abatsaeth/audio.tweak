@@ -1027,7 +1027,12 @@ code {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  margin-top: var(--ctx-y, 0);
   pointer-events: auto;
+}
+.context-menu.show.hidden-by-scroll {
+  opacity: 0;
+  pointer-events: none;
 }
 .context-item-sep {
   width: 1px;
