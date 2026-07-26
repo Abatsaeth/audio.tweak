@@ -1,5 +1,5 @@
 {
-  "name": "static-site",
+  "name": "audio-tweak",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build"
