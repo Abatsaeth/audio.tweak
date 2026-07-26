@@ -1166,6 +1166,11 @@
     }
     (document.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      ce &&
+        ce.classList.contains("show") &&
+        (ce.classList.remove("show"),
+        document.querySelector("#iconSortDown").classList.add("active"),
+        document.querySelector("#iconSortUp").classList.remove("active"));
       const t = e.target.closest(".sound-card, .rail-sound");
       if (t) {
         const n = Number(t.dataset.id);
