@@ -5,12 +5,18 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'terser',
+    cssMinify: true,
     terserOptions: {
       compress: {
         drop_console: true,
         drop_debugger: true,
-        passes: 2,
+        passes: 3,
+        toplevel: true,
+        unsafe: true,
       },
+      mangle: {
+        toplevel: true,
+      }
     },
     rollupOptions: {
       output: {
