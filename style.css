@@ -1170,14 +1170,14 @@ code {
   min-height: 20px;
   transition:
     background var(--d-fast) var(--ease-out),
-    height var(--d-fast) var(--ease-out),
-    transform var(--d-fast) var(--ease-out);
+    height 420ms var(--ease-out),
+    transform 420ms var(--ease-out);
 }
 .custom-scrollbar-thumb.dragging,
 .custom-scrollbar-thumb.scrolling {
   transition:
     background var(--d-fast) var(--ease-out),
-    height var(--d-fast) var(--ease-out);
+    height 420ms var(--ease-out);
 }
 .custom-scrollbar-thumb.dragging,
 .custom-scrollbar-thumb:hover {
