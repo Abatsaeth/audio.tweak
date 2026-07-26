@@ -1059,7 +1059,8 @@ code {
   background: rgb(226 52 74 / 15%);
   color: var(--red);
 }
-.sound-card.context-open {
+.sound-card.context-open,
+.sound-card.context-open:hover {
   transform: translateY(-1px);
   background: linear-gradient(
     180deg,
@@ -1071,7 +1072,8 @@ code {
     var(--shadow-1),
     inset 3px 0 0 var(--red);
 }
-.sound-card.active.context-open {
+.sound-card.active.context-open,
+.sound-card.active.context-open:hover {
   transform: translateY(-1px);
   border-color: rgb(226 52 74 / 70%);
   background: linear-gradient(
@@ -1084,14 +1086,16 @@ code {
     0 8px 22px rgb(0 0 0 / 40%),
     inset 3px 0 0 var(--red);
 }
-.rail-sound.context-open {
+.rail-sound.context-open,
+.rail-sound.context-open:hover {
   transform: translateY(-1px);
   background: rgb(255 255 255 / 6%);
   border-color: var(--hairline-2);
   color: #fff;
   box-shadow: inset 3px 0 0 var(--red);
 }
-.rail-sound.active.context-open {
+.rail-sound.active.context-open,
+.rail-sound.active.context-open:hover {
   transform: translateY(-1px);
   background: linear-gradient(
     135deg,
