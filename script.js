@@ -606,12 +606,18 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       Ze)
     ) {
       let e = 0,
-        t = 0;
+        t = 0,
+        dragScrollHeight = 0,
+        dragClientHeight = 0,
+        dragTrackHeight = 0;
       (Ze.addEventListener("mousedown", (n) => {
         if (n.button !== 0) return;
         ((Je = !0),
           (e = n.clientY),
           (t = te.scrollTop),
+          (dragScrollHeight = te.scrollHeight),
+          (dragClientHeight = te.clientHeight),
+          (dragTrackHeight = Ke.clientHeight),
           Ze.classList.add("dragging"),
           Ge && Ge.classList.add("is-dragging"),
           document.body.setAttribute("data-cursor", "grabbing"),
@@ -619,11 +625,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       }),
         window.addEventListener("mousemove", (n) => {
           if (!Je) return;
-          const o = te.scrollHeight,
-            r = te.clientHeight,
-            i = Ke.clientHeight,
-            s = o - r,
-            a = i - Math.max(20, (r / o) * i),
+          const s = dragScrollHeight - dragClientHeight,
+            a = dragTrackHeight - Math.max(20, (dragClientHeight / dragScrollHeight) * dragTrackHeight),
             l = n.clientY - e,
             c = a > 0 ? (l / a) * s : 0;
           te.scrollTop = t + c;
@@ -689,12 +692,18 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       Be)
     ) {
       let e = 0,
-        t = 0;
+        t = 0,
+        dragScrollHeightInfo = 0,
+        dragClientHeightInfo = 0,
+        dragTrackHeightInfo = 0;
       (Be.addEventListener("mousedown", (n) => {
         if (n.button !== 0) return;
         ((tt = !0),
           (e = n.clientY),
           (t = $e.scrollTop),
+          (dragScrollHeightInfo = $e.scrollHeight),
+          (dragClientHeightInfo = $e.clientHeight),
+          (dragTrackHeightInfo = qe.clientHeight),
           Be.classList.add("dragging"),
           Se && Se.classList.add("is-dragging"),
           document.body.setAttribute("data-cursor", "grabbing"),
@@ -703,11 +712,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         window.addEventListener("mousemove", (n) => {
           if (tt) {
             const o = n.clientY - e,
-              r = $e.scrollHeight,
-              i = $e.clientHeight,
-              s = qe.clientHeight,
-              a = s - Math.max(20, (i / r) * s),
-              l = r - i,
+              a = dragTrackHeightInfo - Math.max(20, (dragClientHeightInfo / dragScrollHeightInfo) * dragTrackHeightInfo),
+              l = dragScrollHeightInfo - dragClientHeightInfo,
               c = a > 0 ? o / a : 0;
             $e.scrollTop = t + c * l;
           }
@@ -807,19 +813,22 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         (rt = null),
         (ctxScrollContainer = null));
     }
+    let ctxRaf = null;
     function updateContextMenu() {
       if (!Ce || !Ce.classList.contains("show") || !it || !ctxScrollContainer) return;
-      const currentAnchorTop = it.getBoundingClientRect().top;
-      const diffY = currentAnchorTop - ctxAnchorTop;
-      Ce.style.setProperty("--ctx-y", `${diffY}px`);
-      const containerRect = ctxScrollContainer.getBoundingClientRect();
-      const anchorRect = it.getBoundingClientRect();
-      const isVisible = anchorRect.top >= containerRect.top && anchorRect.bottom <= containerRect.bottom;
-      if (!isVisible) {
-          Ce.classList.add("hidden-by-scroll");
-      } else {
-          Ce.classList.remove("hidden-by-scroll");
-      }
+      if (ctxRaf) cancelAnimationFrame(ctxRaf);
+      ctxRaf = requestAnimationFrame(() => {
+        const anchorRect = it.getBoundingClientRect();
+        const containerRect = ctxScrollContainer.getBoundingClientRect();
+        const diffY = anchorRect.top - ctxAnchorTop;
+        Ce.style.setProperty("--ctx-y", `${diffY}px`);
+        const isVisible = anchorRect.top >= containerRect.top && anchorRect.bottom <= containerRect.bottom;
+        if (!isVisible) {
+            Ce.classList.add("hidden-by-scroll");
+        } else {
+            Ce.classList.remove("hidden-by-scroll");
+        }
+      });
     }
     document.addEventListener("scroll", updateContextMenu, !0);
     window.addEventListener("resize", updateContextMenu);
@@ -989,17 +998,17 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             a = null,
             l = null,
             c = null,
-            d = 0;
+            d = 0,
+            listRectCache = null;
           function u() {
             if (!s) return void (c = null);
             const t = e("#soundList");
-            if (t) {
-              const e = t.getBoundingClientRect(),
-                n = 60;
+            if (t && listRectCache) {
+              const n = 60;
               let o = 0;
-              (d < e.top + n
-                ? (o = 0.3 * (d - (e.top + n)))
-                : d > e.bottom - n && (o = 0.3 * (d - (e.bottom - n))),
+              (d < listRectCache.top + n
+                ? (o = 0.3 * (d - (listRectCache.top + n)))
+                : d > listRectCache.bottom - n && (o = 0.3 * (d - (listRectCache.bottom - n))),
                 0 !== o &&
                   (t.scrollTop +=
                     Math.sign(o) * Math.max(1, Math.min(25, Math.abs(o)))));
@@ -1008,6 +1017,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           }
           n.addEventListener("mousedown", (e) => {
             if (e.button !== 0) return;
+            const t = document.querySelector("#soundList");
+            if (t) listRectCache = t.getBoundingClientRect();
             let hoverEl = null, hoverRect = null;
             function p(e) {
               if (((d = e.clientY), !s)) {
