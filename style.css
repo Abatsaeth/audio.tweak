@@ -2073,12 +2073,12 @@ body.has-player .brand {
   left: 0;
   top: 50%;
   height: 4px;
-  width: 100%;
-  transform: translateY(-50%) scaleX(0);
+  width: 0%;
+  transform: translateY(-50%);
   transform-origin: left center;
   background: linear-gradient(90deg, var(--red), var(--red-soft));
   border-radius: 3px;
-  will-change: transform;
+  will-change: width;
 }
 .pp-thumb {
   position: absolute;
@@ -2884,7 +2884,9 @@ body.has-player .toast-container {
 .player-progress.returning {
   pointer-events: none !important;
 }
-.player-progress.returning .pp-fill,
+.player-progress.returning .pp-fill {
+  transition: width 0.25s cubic-bezier(0.33, 1, 0.68, 1) !important;
+}
 .player-progress.returning .pp-thumb,
 .player-progress.returning .pp-thumb-label {
   transition: transform 0.25s cubic-bezier(0.33, 1, 0.68, 1) !important;

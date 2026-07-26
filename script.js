@@ -263,7 +263,7 @@
       function E(e) {
         L = e;
         const r = Math.max(0, Math.min(1, e));
-        t.style.transform = `translateY(-50%) scaleX(${r})`;
+        t.style.width = `${r * 100}%`;
         const i = r * y;
         ((n.style.transform = `translate3d(calc(${i}px - 50%), -50%, 0)`),
           (o.style.transform = `translate3d(calc(${i}px - 50%), -50%, 0)`));
