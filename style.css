@@ -2588,7 +2588,7 @@ body.has-player .brand {
   display: block;
   pointer-events: none;
 }
-.info-copy-btn:hover {
+.info-copy-btn:hover:not(.copied) {
   background: rgb(255 255 255 / 6%);
   border-color: var(--hairline-2);
   color: #fff;
@@ -2600,7 +2600,7 @@ body.has-player .brand {
   border-color: transparent;
   box-shadow: none;
   color: #fff;
-  pointer-events: none;
+  cursor: default;
 }
 .info-copy-btn .icon-check,
 .info-copy-btn .icon-copy {
