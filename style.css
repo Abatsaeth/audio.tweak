@@ -2366,19 +2366,20 @@ body.has-player .brand {
   display: flex;
   align-items: center;
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   margin-bottom: 0;
   letter-spacing: -0.01em;
   line-height: 1;
 }
 .modal-card h3 svg,
+
 .modal-title-sep {
-  transform: translateY(2px);
+  transform: translateY(0px);
 }
 .modal-title-sep {
   width: 1px;
-  height: 16px;
+  height: 20px;
   background: var(--hairline-2);
   margin: 0 10px;
 }
