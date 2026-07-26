@@ -1,0 +1,6 @@
+{
+  "name": "Audio Tweak",
+  "description": "A fast, smooth, in-browser audio player. Drag & drop files, reorder, rename, search and shuffle your local audio library seamlessly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
