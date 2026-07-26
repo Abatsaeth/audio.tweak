@@ -342,7 +342,7 @@
         return (k > 0 && q(t * k, k), t * (k || 0));
       }
       function I(e) {
-        if (!k) return;
+        if (!k || e.button !== 0) return;
         trackRect = r.getBoundingClientRect();
         ((m = !0), n.classList.add("dragging"));
         const t = R(e);
@@ -608,6 +608,7 @@
       let e = 0,
         t = 0;
       (Ze.addEventListener("mousedown", (n) => {
+        if (n.button !== 0) return;
         ((Je = !0),
           (e = n.clientY),
           (t = te.scrollTop),
@@ -690,6 +691,7 @@
       let e = 0,
         t = 0;
       (Be.addEventListener("mousedown", (n) => {
+        if (n.button !== 0) return;
         ((tt = !0),
           (e = n.clientY),
           (t = $e.scrollTop),
@@ -1003,6 +1005,7 @@
             c = requestAnimationFrame(u);
           }
           n.addEventListener("mousedown", (e) => {
+            if (e.button !== 0) return;
             let hoverEl = null, hoverRect = null;
             function p(e) {
               if (((d = e.clientY), !s)) {
