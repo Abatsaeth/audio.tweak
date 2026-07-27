@@ -1016,7 +1016,32 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             if (e.button !== 0) return;
             const t = document.querySelector("#soundList");
             if (t) listRectCache = t.getBoundingClientRect();
-            let hoverEl = null, hoverRect = null;
+            let hoverEl = null, hoverRect = null, dragMoveScheduled = !1;
+            function updateDropIndicator() {
+              let r = null, isAbove = !1;
+              if (te) {
+                const cards = Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"));
+                let closest = Infinity;
+                cards.forEach(card => {
+                  if (card === n) return;
+                  const rect = card.getBoundingClientRect();
+                  const center = rect.top + rect.height / 2;
+                  const dist = Math.abs(d - center);
+                  if (dist < closest) {
+                    closest = dist;
+                    r = card;
+                    isAbove = d < center;
+                  }
+                });
+              }
+              document.querySelectorAll(".drop-above, .drop-below").forEach((el) => {
+                if (el !== r) el.classList.remove("drop-above", "drop-below");
+              });
+              if (r) {
+                r.classList.toggle("drop-above", isAbove);
+                r.classList.toggle("drop-below", !isAbove);
+              }
+            }
             function p(e) {
               if (((d = e.clientY), !s)) {
                 const t = e.clientX - o,
@@ -1049,28 +1074,12 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 (e.preventDefault(),
                   document.body.setAttribute("data-cursor", "grabbing"),
                   (a.style.transform = `translate3d(${e.clientX + 10}px, ${e.clientY + 10}px, 0)`));
-                let r = null, isAbove = !1;
-                if (te) {
-                  const cards = Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"));
-                  let closest = Infinity;
-                  cards.forEach(card => {
-                    if (card === n) return;
-                    const rect = card.getBoundingClientRect();
-                    const center = rect.top + rect.height / 2;
-                    const dist = Math.abs(e.clientY - center);
-                    if (dist < closest) {
-                      closest = dist;
-                      r = card;
-                      isAbove = e.clientY < center;
-                    }
+                if (!dragMoveScheduled) {
+                  dragMoveScheduled = !0;
+                  requestAnimationFrame(() => {
+                    dragMoveScheduled = !1;
+                    updateDropIndicator();
                   });
-                }
-                document.querySelectorAll(".drop-above, .drop-below").forEach((el) => {
-                  if (el !== r) el.classList.remove("drop-above", "drop-below");
-                });
-                if (r) {
-                  r.classList.toggle("drop-above", isAbove);
-                  r.classList.toggle("drop-below", !isAbove);
                 }
               }
             }
