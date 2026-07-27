@@ -2210,6 +2210,16 @@ body.has-player .brand {
 .pc-btn.on:hover {
   background: rgb(226 52 74 / 18%);
 }
+.repeat-one-path {
+  stroke-dasharray: 6;
+  stroke-dashoffset: 6;
+  opacity: 0;
+  transition: stroke-dashoffset 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
+}
+.pc-btn.one .repeat-one-path {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
 .pc-play {
   width: 46px;
   height: 46px;

@@ -64,7 +64,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
     z =
       '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">\n        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>\n        <path d="M12 16v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>\n        <circle cx="12" cy="7.5" r="1.5" fill="currentColor"/>\n      </svg>',
     D =
-      '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">\n        <path d="M17 1l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n      </svg>',
+      '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="repeat-icon">\n        <path d="M17 1l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path class="repeat-one-path" d="M11 10h1v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n      </svg>',
     H = (e) => {
       const t = e / 1048576;
       return t >= 1 ? `${t.toFixed(2)} MB` : `${(e / 1024).toFixed(0)} KB`;
@@ -321,15 +321,12 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         ((d = e),
           w.classList.remove("on", "one"),
           0 === e
-            ? ((w.innerHTML = D), w.setAttribute("data-tip", "Repeat: off"))
+            ? w.setAttribute("data-tip", "Repeat: off")
             : 1 === e
               ? (w.classList.add("on"),
-                (w.innerHTML = D),
                 w.setAttribute("data-tip", "Repeat: all"))
               : 2 === e &&
                 (w.classList.add("on", "one"),
-                (w.innerHTML =
-                  '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">\n        <path d="M17 1l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M7 23l-4-4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n        <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>\n        <path d="M11 10h1v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n      </svg>'),
                 w.setAttribute("data-tip", "Repeat: one")));
       }
       let trackRect = null;
@@ -1052,19 +1049,28 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 (e.preventDefault(),
                   document.body.setAttribute("data-cursor", "grabbing"),
                   (a.style.transform = `translate3d(${e.clientX + 10}px, ${e.clientY + 10}px, 0)`));
-                const o = document.elementFromPoint(e.clientX, e.clientY),
-                  r = o ? o.closest(".sound-card") : null;
-                if (
-                  (t(".drop-above, .drop-below").forEach((e) => {
-                    e !== r && e.classList.remove("drop-above", "drop-below");
-                  }),
-                  r && r !== n)
-                ) {
-                  if (hoverEl !== r) { hoverEl = r; hoverRect = r.getBoundingClientRect(); }
-                  const t = hoverRect,
-                    n = e.clientY < t.top + t.height / 2;
-                  (r.classList.toggle("drop-above", n),
-                    r.classList.toggle("drop-below", !n));
+                let r = null, isAbove = !1;
+                if (te) {
+                  const cards = Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"));
+                  let closest = Infinity;
+                  cards.forEach(card => {
+                    if (card === n) return;
+                    const rect = card.getBoundingClientRect();
+                    const center = rect.top + rect.height / 2;
+                    const dist = Math.abs(e.clientY - center);
+                    if (dist < closest) {
+                      closest = dist;
+                      r = card;
+                      isAbove = e.clientY < center;
+                    }
+                  });
+                }
+                document.querySelectorAll(".drop-above, .drop-below").forEach((el) => {
+                  if (el !== r) el.classList.remove("drop-above", "drop-below");
+                });
+                if (r) {
+                  r.classList.toggle("drop-above", isAbove);
+                  r.classList.toggle("drop-below", !isAbove);
                 }
               }
             }
@@ -1099,11 +1105,24 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                       }, 200));
                   }
                   a = null;
-                  const e = document.elementFromPoint(o.clientX, o.clientY),
-                    i = e ? e.closest(".sound-card") : null;
+                  let i = null, isAbove = !1;
+                  if (te) {
+                    const cards = Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"));
+                    let closest = Infinity;
+                    cards.forEach(card => {
+                      if (card === n) return;
+                      const rect = card.getBoundingClientRect();
+                      const center = rect.top + rect.height / 2;
+                      const dist = Math.abs(o.clientY - center);
+                      if (dist < closest) {
+                        closest = dist;
+                        i = card;
+                        isAbove = o.clientY < center;
+                      }
+                    });
+                  }
                   if (i && i !== n) {
-                    const e = i.getBoundingClientRect(),
-                      t = o.clientY < e.top + e.height / 2;
+                    const t = isAbove;
                     !(function (e, t, n) {
                       if (!te) return;
                       const o = X(te);
@@ -1121,13 +1140,13 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                         setTimeout(() => requestAnimationFrame(Qe), 450));
                     })(l, Number(i.dataset.id), t);
                   }
-                  (t(".drop-above, .drop-below").forEach((e) =>
+                  document.querySelectorAll(".drop-above, .drop-below").forEach((e) =>
                     e.classList.remove("drop-above", "drop-below"),
-                  ),
-                    document.body.removeAttribute("data-cursor"),
-                    o.target.dispatchEvent(
-                      new MouseEvent("mouseover", { bubbles: !0 }),
-                    ));
+                  );
+                  document.body.removeAttribute("data-cursor");
+                  o.target.dispatchEvent(
+                    new MouseEvent("mouseover", { bubbles: !0 }),
+                  );
                 }
               }));
           });
