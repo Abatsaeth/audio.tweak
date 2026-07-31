@@ -158,11 +158,11 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         a = n.top - o.top;
       if (Math.abs(s) < 0.5 && Math.abs(a) < 0.5) return;
       (t.classList.add("flipping"),
-        (t.style.transition = "none"),
+        (t.style.transition = "transform 0s, background var(--d-mid) var(--ease-soft), border-color var(--d-mid) var(--ease-soft), box-shadow var(--d-mid) var(--ease-soft), opacity var(--d-mid) var(--ease-out), color var(--d-mid) var(--ease-soft)"),
         (t.style.transform = `translate(${s}px, ${a}px)`),
         t.getBoundingClientRect(),
         requestAnimationFrame(() => {
-          ((t.style.transition = `transform ${r}ms ${i}`),
+          ((t.style.transition = `transform ${r}ms ${i}, background var(--d-mid) var(--ease-soft), border-color var(--d-mid) var(--ease-soft), box-shadow var(--d-mid) var(--ease-soft), opacity var(--d-mid) var(--ease-out), color var(--d-mid) var(--ease-soft)`),
             (t.style.transform = ""));
         }));
       const l = () => {
@@ -212,6 +212,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       Me = e("#contextEdit"),
       Ee = e("#contextInfo"),
       Te = e("#contextDelete"),
+      ctxPin = e("#contextPin"),
       Ae = e("#infoModal"),
       Se = e("#infoContentWrap"),
       $e = e("#infoContent"),
@@ -225,7 +226,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       Re = e("#topbarSize"),
       Ie = e("#topbarDuration");
     let Pe = null,
-      Ye = null;
+      Ye = null,
+      isPinnedCollapsed = false;
     (o && (o.innerHTML = $),
       Q && (Q.innerHTML = $),
       fe && (fe.innerHTML = $),
@@ -280,7 +282,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         (s.classList.toggle("hidden", n), a.classList.toggle("hidden", o));
       }
       ((l.style.cursor = "pointer"),
-        l.addEventListener("click", (e) => {
+        l?.addEventListener("click", (e) => {
           k &&
             ((a.style.opacity = "0"),
             setTimeout(() => {
@@ -357,11 +359,11 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           u && Ne.update(u.currentTime, u.duration || 0));
       }
       return (
-        h.addEventListener("click", () => {
+        h?.addEventListener("click", () => {
           i && mt(i);
         }),
         F &&
-          F.addEventListener("click", () => {
+          F?.addEventListener("click", () => {
             i &&
               (yt(),
               u && (retProg(), u.currentTime = 0),
@@ -369,7 +371,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
               (lastAudioTime = 0),
               q(0, k));
           }),
-        g.addEventListener("click", () =>
+        g?.addEventListener("click", () =>
           (function () {
             const e = b();
             if (!e.length) return;
@@ -381,12 +383,12 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 : xt(e[t - 1].id, !0);
           })(),
         ),
-        v.addEventListener("click", () => Lt()),
-        p.addEventListener("click", () => {
+        v?.addEventListener("click", () => Lt()),
+        p?.addEventListener("click", () => {
           i && jt(i);
         }),
-        f.addEventListener("click", () => j(!c)),
-        w.addEventListener("click", () => {
+        f?.addEventListener("click", () => j(!c)),
+        w?.addEventListener("click", () => {
           (b().length <= 1 ? H(2 === d ? 0 : 2) : H((d + 1) % 3),
             u &&
               (u.ended ||
@@ -458,11 +460,11 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
     }
     (document.body.appendChild(Ne.root),
       n &&
-        n.addEventListener("click", () =>
+        n?.addEventListener("click", () =>
           Oe(!J || !J.classList.contains("open")),
         ),
-      ee && ee.addEventListener("click", () => Oe(!1)),
-      ke && ke.addEventListener("click", () => Oe(!1)),
+      ee && ee?.addEventListener("click", () => Oe(!1)),
+      ke && ke?.addEventListener("click", () => Oe(!1)),
       document.addEventListener("keydown", (e) => {
         "Escape" === e.key &&
           (ye && ye.classList.contains("open")
@@ -508,8 +510,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
               ? pe.classList.add("has-text")
               : pe.classList.remove("has-text"));
         })),
-      me && me.addEventListener("click", Ue),
-      Z && Z.addEventListener("click", Ue),
+      me && me?.addEventListener("click", Ue),
+      Z && Z?.addEventListener("click", Ue),
       ve &&
         ve.addEventListener("change", (e) => {
           We(Array.from(e.target.files || []));
@@ -730,6 +732,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         o = e && K ? X(K) : null,
         i = g[v];
       (r.sort((e, t) => {
+        if (e.pinned && !t.pinned) return -1;
+        if (!e.pinned && t.pinned) return 1;
         let n = 0;
         return (
           "name" === i
@@ -758,15 +762,15 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         setTimeout(() => requestAnimationFrame(Qe), 450));
     }
     (oe &&
-      oe.addEventListener("click", () => {
+      oe?.addEventListener("click", () => {
         ((f = !f), lt(), ot());
       }),
       se &&
-        se.addEventListener("click", () => {
+        se?.addEventListener("click", () => {
           (st(), (v = (v + 1) % g.length), lt(), ot());
         }),
       le &&
-        le.addEventListener("click", (t) => {
+        le?.addEventListener("click", (t) => {
           (t.stopPropagation(), st());
           const n = !ce.classList.contains("show");
           (ce.classList.toggle("show", n),
@@ -774,7 +778,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             e("#iconSortUp").classList.toggle("active", n));
         }),
       ce &&
-        ce.addEventListener("click", (t) => {
+        ce?.addEventListener("click", (t) => {
           const n = t.target.closest(".sort-item");
           if (!n) return;
           const o = n.dataset.sort,
@@ -849,6 +853,17 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         it && it.classList.remove("context-open"),
         (it = o),
         o && o.classList.add("context-open"),
+        (() => {
+          if (!ctxPin) return;
+          const target = r.find(x => x.id === n);
+          if(target && target.pinned) {
+             ctxPin.classList.add("context-danger");
+             ctxPin.querySelector("span").textContent = "Unpin";
+          } else {
+             ctxPin.classList.remove("context-danger");
+             ctxPin.querySelector("span").textContent = "Pin";
+          }
+        })(),
         (ctxScrollContainer = o ? o.closest(".sound-list, .rail-sounds, .library") : null),
         (ctxAnchorTop = o ? o.getBoundingClientRect().top : 0));
     }
@@ -891,17 +906,152 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
     function dt({ newIds: e = [] } = {}) {
       const n = b();
       if (te) {
+        const pinnedItems = n.filter(x => x.pinned);
+        const unpinnedItems = n.filter(x => !x.pinned);
         const o = document.createDocumentFragment();
-        for (const t of n) {
-          const n = pt(t);
-          (e.includes(t.id) &&
-            (n.classList.add("entering"),
-            n.addEventListener(
-              "animationend",
-              () => n.classList.remove("entering"),
-              { once: !0 },
-            )),
-            o.appendChild(n));
+        
+        if (pinnedItems.length > 0) {
+          const headerWrap = document.createElement("li");
+          headerWrap.style.margin = "0 0 4px 0";
+          headerWrap.style.flexShrink = "0";
+          headerWrap.innerHTML = `
+            <div class="sort-control pinned-header-btn" style="cursor: pointer;">
+              <button class="sort-btn-main pinned-btn" style="flex: 1; justify-content: space-between; padding: 6px 10px; width: 100%;">
+                <span style="letter-spacing: 0.05em; text-transform: uppercase;">Pinned</span>
+                <div class="icon-transition-wrap" style="width: 14px; height: 14px; display: grid; place-items: center;">
+                  <svg class="transition-icon active" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.4s var(--ease-out);">
+                    <path d="M18 15l-6-6-6 6" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          `;
+          const headerBtn = headerWrap.querySelector('button');
+          const headerSvg = headerWrap.querySelector('svg');
+          const sortControl = headerWrap.querySelector('.sort-control');
+          
+          sortControl.addEventListener('mouseover', () => {
+              if (document.body.getAttribute('data-cursor') !== 'grabbing') {
+                  document.body.setAttribute('data-cursor', 'pointer');
+              }
+          });
+          sortControl.addEventListener('mouseleave', () => {
+              if (document.body.getAttribute('data-cursor') === 'pointer') {
+                  document.body.removeAttribute('data-cursor');
+              }
+          });
+
+          if (isPinnedCollapsed) {
+            headerSvg.style.transform = "rotate(180deg)";
+          }
+          o.appendChild(headerWrap);
+
+          const pinnedContainer = document.createElement("li");
+          pinnedContainer.className = "pinned-container";
+          pinnedContainer.style.display = "flex";
+          pinnedContainer.style.flexDirection = "column";
+          pinnedContainer.style.flexShrink = "0";
+          pinnedContainer.style.overflow = isPinnedCollapsed ? "hidden" : "visible";
+          
+          const cardsWrapper = document.createElement("div");
+          cardsWrapper.className = "pinned-cards-wrapper";
+          cardsWrapper.style.display = "flex";
+          cardsWrapper.style.flexDirection = "column";
+          cardsWrapper.style.gap = "10px";
+          cardsWrapper.style.padding = "2px 0 2px 0";
+          cardsWrapper.style.marginTop = "-2px";
+          
+          for (const t of pinnedItems) {
+            const el = pt(t);
+            if (e.includes(t.id)) {
+              el.classList.add("entering");
+              el.addEventListener("animationend", () => el.classList.remove("entering"), { once: true });
+            }
+            cardsWrapper.appendChild(el);
+          }
+          pinnedContainer.appendChild(cardsWrapper);
+
+          let sep = null;
+          if (unpinnedItems.length > 0) {
+             sep = document.createElement("div");
+             sep.className = "sidebar-separator";
+             sep.style.marginTop = "14px";
+             sep.style.marginBottom = "4px";
+             pinnedContainer.appendChild(sep);
+          }
+
+          if (isPinnedCollapsed) {
+             pinnedContainer.style.height = "0px";
+             pinnedContainer.style.opacity = "0";
+             pinnedContainer.style.overflow = "hidden";
+          }
+          
+          o.appendChild(pinnedContainer);
+          
+          let isAnimating = false;
+          headerWrap.addEventListener("click", () => {
+             if (isAnimating) return;
+             isAnimating = true;
+             headerBtn.style.pointerEvents = "none"; sortControl.style.pointerEvents = "none";
+             
+             isPinnedCollapsed = !isPinnedCollapsed;
+             
+             if (isPinnedCollapsed) {
+                headerSvg.style.transform = "rotate(180deg)";
+                pinnedContainer.style.height = pinnedContainer.scrollHeight + "px";
+                pinnedContainer.offsetHeight; // force layout
+                pinnedContainer.style.overflow = "hidden";
+                pinnedContainer.style.transition = "height 0.3s var(--ease-out), opacity 0.3s var(--ease-out)";
+                pinnedContainer.style.height = "0px";
+                pinnedContainer.style.opacity = "0";
+                
+                setTimeout(() => {
+                   pinnedContainer.style.transition = "";
+                   isAnimating = false;
+                   headerBtn.style.pointerEvents = ""; sortControl.style.pointerEvents = "";
+                   U(Array.from(document.querySelectorAll(".sound-card")).map(el => ({
+                       wrapEl: el.querySelector(".sound-name-wrap"),
+                       innerEl: el.querySelector(".sound-name")
+                   })));
+                   Qe();
+                }, 300);
+             } else {
+                headerSvg.style.transform = "rotate(0deg)";
+                
+                pinnedContainer.style.height = "auto";
+                const targetHeight = pinnedContainer.scrollHeight;
+                pinnedContainer.style.height = "0px";
+                pinnedContainer.style.opacity = "1";
+                pinnedContainer.style.overflow = "hidden";
+                pinnedContainer.offsetHeight;
+                
+                pinnedContainer.style.transition = "height 0.3s var(--ease-out)";
+                pinnedContainer.style.height = targetHeight + "px";
+                
+                setTimeout(() => {
+                   pinnedContainer.style.transition = "";
+                   pinnedContainer.style.height = "auto";
+                   pinnedContainer.style.overflow = "visible";
+                   
+                   isAnimating = false;
+                   headerBtn.style.pointerEvents = ""; sortControl.style.pointerEvents = "";
+                   U(Array.from(document.querySelectorAll(".sound-card")).map(el => ({
+                       wrapEl: el.querySelector(".sound-name-wrap"),
+                       innerEl: el.querySelector(".sound-name")
+                   })));
+                   Qe();
+                }, 300);
+             }
+          });
+        }
+        
+        for (const t of unpinnedItems) {
+          const el = pt(t);
+          if (e.includes(t.id)) {
+            el.classList.add("entering");
+            el.addEventListener("animationend", () => el.classList.remove("entering"), { once: true });
+          }
+          o.appendChild(el);
         }
         ((te.innerHTML = ""),
           te.appendChild(o),
@@ -918,9 +1068,33 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           }));
       }
       if (K) {
-        const e = document.createDocumentFragment();
-        for (const t of r) e.appendChild(ut(t));
-        ((K.innerHTML = ""), K.appendChild(e));
+        const pinnedItems = r.filter(x => x.pinned);
+        const unpinnedItems = r.filter(x => !x.pinned);
+        const frag = document.createDocumentFragment();
+        if (pinnedItems.length > 0) {
+          for (const t of pinnedItems) {
+            const el = ut(t);
+            if (e.includes(t.id)) {
+              el.classList.add("entering");
+              el.addEventListener("animationend", () => el.classList.remove("entering"), { once: true });
+            }
+            frag.appendChild(el);
+          }
+          if (unpinnedItems.length > 0) {
+            const sep = document.createElement("li");
+            sep.className = "rail-sound-sep";
+            frag.appendChild(sep);
+          }
+        }
+        for (const t of unpinnedItems) {
+            const el = ut(t);
+            if (e.includes(t.id)) {
+              el.classList.add("entering");
+              el.addEventListener("animationend", () => el.classList.remove("entering"), { once: true });
+            }
+            frag.appendChild(el);
+        }
+        ((K.innerHTML = ""), K.appendChild(frag));
       }
       (ne && ct(ne, n.length),
         G && ct(G, r.length),
@@ -942,7 +1116,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         (t.dataset.tip = e.name),
         (t.dataset.tipPos = "right"),
         (t.innerHTML = `\n        <span class="ico-default">${q}</span>\n        <span class="ico-hover">${B}</span>\n        <span class="ico-active">\n          <span class="ico-active-play">${B}</span>\n          <span class="ico-active-pause">${F}</span>\n        </span>\n      `),
-        t.addEventListener("click", () => ht(e.id)),
+        t?.addEventListener("click", () => ht(e.id)),
         t.addEventListener("keydown", (t) => {
           ("Enter" !== t.key && " " !== t.key) ||
             (t.preventDefault(), ht(e.id));
@@ -957,15 +1131,15 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         (o.dataset.id = String(n.id)),
         n.id === i && o.classList.add("active"),
         n.id === i && l && o.classList.add("is-playing"),
-        (o.innerHTML = `\n        <div class="sound-thumb" aria-hidden="true">\n          <span class="ico-default">${q}</span>\n          <span class="ico-hover">${B}</span>\n          <span class="ico-active">\n            <span class="ico-active-play">${B}</span>\n            <span class="ico-active-pause">${F}</span>\n          </span>\n        </div>\n        <div class="sound-meta">\n          <div class="sound-name-wrap">\n            <span class="sound-name"></span>\n          </div>\n          <div class="sound-sub">\n            <span class="pill red"></span>\n            <span class="sep"></span>\n            <span class="size"></span>\n            <span class="sep"></span>\n            <span class="duration"></span>\n          </div>\n        </div>\n        <div class="sound-actions">\n          <button class="icon-btn info" aria-label="Info">${z}</button>\n          <button class="icon-btn edit" aria-label="Rename">\n      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\n        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>\n      </svg></button>\n          <button class="icon-btn danger delete" aria-label="Remove">\n      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\n        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>\n      </svg></button>\n        </div>\n      `),
+        (o.innerHTML = `\n        <div class="sound-thumb" aria-hidden="true">\n          <span class="ico-default">${q}</span>\n          <span class="ico-hover">${B}</span>\n          <span class="ico-active">\n            <span class="ico-active-play">${B}</span>\n            <span class="ico-active-pause">${F}</span>\n          </span>\n        </div>\n        <div class="sound-meta">\n          <div class="sound-name-wrap">\n            <span class="sound-name"></span>\n          </div>\n          <div class="sound-sub">\n            <span class="pill red"></span>\n            <span class="sep"></span>\n            <span class="size"></span>\n            <span class="sep"></span>\n            <span class="duration"></span>\n          </div>\n        </div>\n        <div class="sound-actions">\n          <button class="icon-btn info" aria-label="Info">${z}</button>\n          <button class="icon-btn edit" aria-label="Rename">\n      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\n        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>\n      </svg></button>\n          <button class="icon-btn pin ${n.pinned ? 'active' : ''}" aria-label="${n.pinned ? 'Unpin' : 'Pin'}">\n      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\n        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>\n      </svg></button>\n          <button class="icon-btn danger delete" aria-label="Remove">\n      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\n        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>\n      </svg></button>\n        </div>\n      `),
         (o.querySelector(".sound-name").textContent = n.name),
         (o.querySelector(".pill").textContent = n.format),
         (o.querySelector(".size").textContent = H(n.size)),
         (o.querySelector(".duration").textContent = R(n.duration)),
-        o.querySelector(".sound-thumb").addEventListener("click", (e) => {
+        o.querySelector(".sound-thumb")?.addEventListener("click", (e) => {
           (e.stopPropagation(), st(), mt(n.id));
         }),
-        o.addEventListener("click", (e) => {
+        o?.addEventListener("click", (e) => {
           o.dataset.justDragged ||
             e.target.closest(".sound-thumb") ||
             e.target.closest(".icon-btn") ||
@@ -979,13 +1153,19 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 Et());
             })(n.id);
         }),
-        o.querySelector(".info").addEventListener("click", (e) => {
+        o.querySelector(".info")?.addEventListener("click", (e) => {
           (e.stopPropagation(), st(), jt(n.id));
         }),
-        o.querySelector(".edit").addEventListener("click", (e) => {
+        o.querySelector(".edit")?.addEventListener("click", (e) => {
           (e.stopPropagation(), st(), qt(n.id));
         }),
-        o.querySelector(".delete").addEventListener("click", (e) => {
+        o.querySelector(".pin")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          st();
+          const target = r.find(x => x.id === n.id);
+          if(target) { target.pinned = !target.pinned; ot(true, [target.id]); }
+        }),
+        o.querySelector(".delete")?.addEventListener("click", (e) => {
           (e.stopPropagation(), st(), $t(n.id));
         }),
         (function (n) {
@@ -1227,16 +1407,24 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       } else st();
     }),
       Me &&
-        Me.addEventListener("click", () => {
+        Me?.addEventListener("click", () => {
           (rt && qt(rt), st());
         }),
       Ee &&
-        Ee.addEventListener("click", () => {
+        Ee?.addEventListener("click", () => {
           (rt && jt(rt), st());
         }),
       Te &&
-        Te.addEventListener("click", () => {
+        Te?.addEventListener("click", () => {
           (rt && $t(rt), st());
+        }),
+      ctxPin &&
+        ctxPin?.addEventListener("click", () => {
+          if (null !== rt) {
+            const target = r.find(x => x.id === rt);
+            if(target) { target.pinned = !target.pinned; ot(true, [target.id]); }
+          }
+          st();
         }));
     let vt = 0,
       ft = 0;
@@ -1406,33 +1594,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         wt();
         Tt(!1);
       }
-      if (te) {
-        const frag = document.createDocumentFragment();
-        for (const tr of r) frag.appendChild(pt(tr));
-        te.innerHTML = "";
-        te.appendChild(frag);
-        requestAnimationFrame(() => {
-          const wrapList = [];
-          t(".sound-card", te).forEach((card) => {
-            wrapList.push({
-              wrapEl: card.querySelector(".sound-name-wrap"),
-              innerEl: card.querySelector(".sound-name"),
-            });
-          });
-          U(wrapList);
-          Qe();
-        });
-      }
-      if (K) {
-        const frag = document.createDocumentFragment();
-        for (const tr of r) frag.appendChild(ut(tr));
-        K.innerHTML = "";
-        K.appendChild(frag);
-      }
-      const newLen = r.length;
-      if (ne) ct(ne, newLen);
-      if (G) ct(G, newLen);
-      if (de) de.classList.toggle("hide", newLen > 0);
+      dt();
       V(n, te);
       if (o && K) V(o, K, { duration: 380 });
       It(`Removed — ${d.name}`, "danger");
@@ -1801,11 +1963,11 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
       Bt();
     }
     (ye &&
-      ye.addEventListener("click", (e) => {
+      ye?.addEventListener("click", (e) => {
         e.target.matches("[data-close]") && Bt();
       }),
       Ae &&
-        Ae.addEventListener("click", async (e) => {
+        Ae?.addEventListener("click", async (e) => {
           e.target.matches("[data-close]") &&
             Ae &&
             Ae.classList.contains("open") &&
@@ -1847,7 +2009,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
               }
           }
         }),
-      xe && xe.addEventListener("click", zt),
+      xe && xe?.addEventListener("click", zt),
       Le &&
         Le.addEventListener("keydown", (e) => {
           "Enter" === e.key && zt();
