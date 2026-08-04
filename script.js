@@ -1642,58 +1642,98 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             const t = new FileReader();
             ((t.onload = async (t) => {
               try {
-                const n = new (
-                    window.AudioContext || window.webkitAudioContext
-                  )(),
+                const n = new (window.AudioContext || window.webkitAudioContext)(),
                   o = await n.decodeAudioData(t.target.result);
-                let r = 0,
-                  i = 0,
-                  s = 0,
-                  a = 0,
-                  l = 0;
-                for (let e = 0; e < o.numberOfChannels; e++) {
-                  const t = o.getChannelData(e);
-                  s += t.length;
-                  let n = 0;
-                  for (let e = 0; e < t.length; e++) {
-                    const o = t[e],
-                      s = Math.abs(o);
-                    (s > r && (r = s), (i += o * o), (a += o));
-                    let c = o > 0 ? 1 : o < 0 ? -1 : 0;
-                    (0 !== n && 0 !== c && c !== n && l++, 0 !== c && (n = c));
-                  }
+                
+                const channelData = [];
+                for(let ch=0; ch<o.numberOfChannels; ch++) {
+                  channelData.push(o.getChannelData(ch));
                 }
-                let c = null;
-                if (2 === o.numberOfChannels) {
-                  const e = o.getChannelData(0),
-                    t = o.getChannelData(1);
-                  let n = 0,
-                    r = 0,
-                    i = 0;
-                  for (let o = 0; o < e.length; o++) {
-                    const s = e[o],
-                      a = t[o];
-                    ((n += s * a), (r += s * s), (i += a * a));
+                
+                const workerCode = `
+                  self.onmessage = function(ev) {
+                    try {
+                      const channels = ev.data.channels;
+                      const sampleRate = ev.data.sampleRate;
+                      const length = ev.data.length;
+                      const numberOfChannels = channels.length;
+                      
+                      let r = 0, i = 0, s = 0, a = 0, l = 0;
+                      
+                      for (let ch = 0; ch < numberOfChannels; ch++) {
+                        const t = channels[ch];
+                        s += t.length;
+                        let n = 0;
+                        for (let e = 0; e < t.length; e++) {
+                          const o = t[e],
+                            s2 = Math.abs(o);
+                          if (s2 > r) r = s2;
+                          i += o * o;
+                          a += o;
+                          let c = o > 0 ? 1 : o < 0 ? -1 : 0;
+                          if (0 !== n && 0 !== c && c !== n) l++;
+                          if (0 !== c) n = c;
+                        }
+                      }
+                      
+                      let c = null;
+                      if (2 === numberOfChannels) {
+                        const e = channels[0],
+                          t = channels[1];
+                        let n = 0,
+                          r2 = 0,
+                          i2 = 0;
+                        for (let o = 0; o < e.length; o++) {
+                          const s3 = e[o],
+                            a2 = t[o];
+                          n += s3 * a2;
+                          r2 += s3 * s3;
+                          i2 += a2 * a2;
+                        }
+                        const s4 = Math.sqrt(r2 * i2);
+                        c = s4 > 0 ? n / s4 : 0;
+                      }
+                      
+                      const d = Math.sqrt(i / s),
+                        u = r > 0 ? 20 * Math.log10(r) : -1 / 0,
+                        p = d > 0 ? 20 * Math.log10(d) : -1 / 0;
+                        
+                      self.postMessage({
+                        sampleRate: sampleRate,
+                        channels: numberOfChannels,
+                        samples: length,
+                        peak: r,
+                        peakDB: u,
+                        rms: d,
+                        rmsDB: p,
+                        dcOffset: a / s,
+                        zeroCrossings: l,
+                        correlation: c,
+                        crestFactor: r > 0 && d > 0 ? u - p : 0,
+                      });
+                    } catch(err) {
+                      self.postMessage(null);
+                    }
                   }
-                  const s = Math.sqrt(r * i);
-                  c = s > 0 ? n / s : 0;
-                }
-                const d = Math.sqrt(i / s),
-                  u = r > 0 ? 20 * Math.log10(r) : -1 / 0,
-                  p = d > 0 ? 20 * Math.log10(d) : -1 / 0;
-                e({
+                `;
+                
+                const blob = new Blob([workerCode], { type: "application/javascript" });
+                const worker = new Worker(URL.createObjectURL(blob));
+                worker.onmessage = (msg) => {
+                  e(msg.data);
+                  worker.terminate();
+                };
+                worker.onerror = () => {
+                  e(null);
+                  worker.terminate();
+                };
+                
+                worker.postMessage({
+                  channels: channelData,
                   sampleRate: o.sampleRate,
-                  channels: o.numberOfChannels,
-                  samples: o.length,
-                  peak: r,
-                  peakDB: u,
-                  rms: d,
-                  rmsDB: p,
-                  dcOffset: a / s,
-                  zeroCrossings: l,
-                  correlation: c,
-                  crestFactor: r > 0 && d > 0 ? u - p : 0,
+                  length: o.length
                 });
+                
               } catch (t) {
                 e(null);
               }
