@@ -39,6 +39,7 @@ export default defineConfig({
     }),
   ],
   build: {
+    assetsInlineLimit: 0,
     modulePreload: { polyfill: false },
     target: 'esnext',
     minify: 'terser',
@@ -62,4 +63,3 @@ export default defineConfig({
     }
   }
 });
-
