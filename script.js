@@ -1202,23 +1202,25 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             const t = document.querySelector("#soundList");
             if (t) listRectCache = t.getBoundingClientRect();
             let hoverEl = null, hoverRect = null, dragMoveScheduled = !1;
+            const cardCenters = te
+              ? Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"))
+                  .filter(card => card !== n)
+                  .map(card => {
+                    const rect = card.getBoundingClientRect();
+                    return { el: card, center: rect.top + rect.height / 2 };
+                  })
+              : [];
             function updateDropIndicator() {
               let r = null, isAbove = !1;
-              if (te) {
-                const cards = Array.from(te.querySelectorAll(".sound-card:not(.drag-clone)"));
-                let closest = Infinity;
-                cards.forEach(card => {
-                  if (card === n) return;
-                  const rect = card.getBoundingClientRect();
-                  const center = rect.top + rect.height / 2;
-                  const dist = Math.abs(d - center);
-                  if (dist < closest) {
-                    closest = dist;
-                    r = card;
-                    isAbove = d < center;
-                  }
-                });
-              }
+              let closest = Infinity;
+              cardCenters.forEach(({ el: card, center }) => {
+                const dist = Math.abs(d - center);
+                if (dist < closest) {
+                  closest = dist;
+                  r = card;
+                  isAbove = d < center;
+                }
+              });
               document.querySelectorAll(".drop-above, .drop-below").forEach((el) => {
                 if (el !== r) el.classList.remove("drop-above", "drop-below");
               });
