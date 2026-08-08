@@ -1720,14 +1720,17 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 `;
                 
                 const blob = new Blob([workerCode], { type: "application/javascript" });
-                const worker = new Worker(URL.createObjectURL(blob));
+                const workerUrl = URL.createObjectURL(blob);
+                const worker = new Worker(workerUrl);
                 worker.onmessage = (msg) => {
                   e(msg.data);
                   worker.terminate();
+                  URL.revokeObjectURL(workerUrl);
                 };
                 worker.onerror = () => {
                   e(null);
                   worker.terminate();
+                  URL.revokeObjectURL(workerUrl);
                 };
                 
                 worker.postMessage({
