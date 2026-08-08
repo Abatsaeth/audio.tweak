@@ -1,6 +1,6 @@
 <div align="center">
 
-# Audio Tweak
+<img src="./public/logo-banner.svg" alt="Audio Tweak Logo" width="500" style="max-width: 100%;" />
 
 **A free, open-source, private-by-design audio player and editor — entirely in your browser.**
 
