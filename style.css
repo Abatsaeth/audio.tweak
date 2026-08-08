@@ -459,7 +459,8 @@
   outline: 0 !important;
 }
 :focus-visible {
-  outline: 0 !important;
+  outline: 2px solid rgb(226 52 74 / 70%) !important;
+  outline-offset: 2px !important;
 }
 input,
 textarea {
@@ -1335,7 +1336,6 @@ code {
   color: var(--text-soft);
   background: rgb(255 255 255 / 5%);
   padding: 3px 8px;
-  letter-spacing: 0.1em;
 }
 .sort-wrap {
   position: relative;
