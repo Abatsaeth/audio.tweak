@@ -4,10 +4,20 @@
 
 **A free, open-source, private-by-design audio player and editor — entirely in your browser.**
 
-[![License](https://img.shields.io/badge/license-MIT%20%2F%20ISC-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-MIT%20%2F%20ISC-blue.svg)](./LICENSE.md)
 [![Built with Vite](https://img.shields.io/badge/built%20with-Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![PWA Ready](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)](#privacy--security)
 [![No Tracking](https://img.shields.io/badge/tracking-none-success.svg)](#privacy--security)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
+
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-222222?logo=githubpages&logoColor=white)](https://abatsaeth.github.io/audio.tweak/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-live-F38020?logo=cloudflare&logoColor=white)](https://audio-tweak.abatsaeth.workers.dev/)
+[![Netlify](https://img.shields.io/badge/Netlify-live-00C7B7?logo=netlify&logoColor=white)](https://audiotweak.netlify.app/)
+[![Last Commit](https://img.shields.io/github/last-commit/Abatsaeth/audio.tweak)](../../commits/main)
 
 [Live Demo](https://abatsaeth.github.io/audio.tweak/) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
 
@@ -108,4 +118,4 @@ Issues and pull requests are welcome. If you're planning a larger change, consid
 
 ## License
 
-Dual-licensed under your choice of the [MIT License](./LICENSE) or the [ISC License](./LICENSE) — see [`LICENSE`](./LICENSE) for the full text of both.
+Dual-licensed under your choice of the MIT License or the ISC License — see [`LICENSE.md`](./LICENSE.md) for the full text of both (or [`LICENSE`](./LICENSE) for the plain-text version).
