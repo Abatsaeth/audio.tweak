@@ -993,6 +993,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
              if (isAnimating) return;
              isAnimating = true;
              headerBtn.style.pointerEvents = "none"; sortControl.style.pointerEvents = "none";
+             syncCursor();
              
              isPinnedCollapsed = !isPinnedCollapsed;
              
@@ -1009,6 +1010,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                    pinnedContainer.style.transition = "";
                    isAnimating = false;
                    headerBtn.style.pointerEvents = ""; sortControl.style.pointerEvents = "";
+                   syncCursor();
                    U(Array.from(document.querySelectorAll(".sound-card")).map(el => ({
                        wrapEl: el.querySelector(".sound-name-wrap"),
                        innerEl: el.querySelector(".sound-name")
@@ -1035,6 +1037,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                    
                    isAnimating = false;
                    headerBtn.style.pointerEvents = ""; sortControl.style.pointerEvents = "";
+                   syncCursor();
                    U(Array.from(document.querySelectorAll(".sound-card")).map(el => ({
                        wrapEl: el.querySelector(".sound-name-wrap"),
                        innerEl: el.querySelector(".sound-name")
@@ -2051,8 +2054,10 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                 (await navigator.clipboard.writeText(e),
                   It("Copied to clipboard", "success"),
                   n.classList.add("copied"),
+                  syncCursor(),
                   setTimeout(() => {
                     n.classList.remove("copied");
+                    syncCursor();
                   }, 1500));
               } catch (e) {
                 It("Failed to copy", "error");
@@ -2158,6 +2163,39 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
             });
           }, 150)));
       }));
+    let lastCursorClientX = 0,
+      lastCursorClientY = 0;
+    document.addEventListener(
+      "mousemove",
+      (e) => {
+        ((lastCursorClientX = e.clientX), (lastCursorClientY = e.clientY));
+      },
+      { passive: !0 },
+    );
+    const CURSOR_POINTER_SELECTOR =
+      "button, a, [data-tip], .pc-btn, .sound-action, .sound-delete, .custom-scrollbar-thumb, .sound-thumb, .rail-sound, .pp-track, .pp-thumb, .pp-time, .pp-times, .pp-thumb-label";
+    function applyCursorForTarget(t) {
+      if ("grabbing" === document.body.getAttribute("data-cursor")) return;
+      if (!t) return void document.body.removeAttribute("data-cursor");
+      if (
+        t.closest(".copied") ||
+        getComputedStyle(t).pointerEvents === "none"
+      )
+        return void document.body.removeAttribute("data-cursor");
+      t.closest(CURSOR_POINTER_SELECTOR)
+        ? document.body.setAttribute("data-cursor", "pointer")
+        : t.closest(".sound-card")
+          ? t.closest(".sound-card").classList.contains("dragging") ||
+            document.body.setAttribute("data-cursor", "grab")
+          : t.closest("input, textarea")
+            ? document.body.setAttribute("data-cursor", "text")
+            : document.body.removeAttribute("data-cursor");
+    }
+    function syncCursor() {
+      applyCursorForTarget(
+        document.elementFromPoint(lastCursorClientX, lastCursorClientY),
+      );
+    }
     const Wt = e("#cursorWrap");
     if (Wt) {
       let e = !1,
@@ -2196,19 +2234,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
               })));
         }),
         document.addEventListener("mouseover", (e) => {
-          if ("grabbing" === document.body.getAttribute("data-cursor")) return;
-          const t = e.target;
-          t.closest(
-            "button, a, [data-tip], .pc-btn, .sound-action, .sound-delete, .custom-scrollbar-thumb, .sound-thumb, .rail-sound, .pp-track, .pp-thumb, .pp-time, .pp-times, .pp-thumb-label",
-          )
-            ? document.body.setAttribute("data-cursor", "pointer")
-            : t.closest(".sound-card")
-              ? t.closest(".sound-card").classList.contains("dragging") ||
-                document.body.setAttribute("data-cursor", "grab")
-              : t.closest("input, textarea")
-                ? document.body.setAttribute("data-cursor", "text")
-                : "grabbing" !== document.body.getAttribute("data-cursor") &&
-                  document.body.removeAttribute("data-cursor");
+          applyCursorForTarget(e.target);
         }),
         document.addEventListener("mousedown", (e) => {
           const t = e.target;
