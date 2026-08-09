@@ -892,13 +892,14 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           : (re.classList.remove("active"), ie.classList.add("active")));
     }
     function ct(e, t) {
+      const display = t > 999 ? `${Math.floor(t / 1000)}K` : String(t);
       e &&
-        e.textContent !== String(t) &&
+        e.textContent !== display &&
         ((e.style.transition = "filter 150ms ease, transform 150ms ease"),
         (e.style.filter = "blur(4px)"),
         (e.style.transform = "scale(0.9)"),
         setTimeout(() => {
-          ((e.textContent = `${t}`),
+          ((e.textContent = display),
             (e.style.filter = "blur(0px)"),
             (e.style.transform = "scale(1)"));
         }, 150));
@@ -916,18 +917,33 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           headerWrap.style.flexShrink = "0";
           headerWrap.innerHTML = `
             <div class="sort-control pinned-header-btn" style="cursor: pointer;">
-              <button class="sort-btn-main pinned-btn" style="flex: 1; justify-content: space-between; padding: 6px 10px; width: 100%;">
-                <span style="letter-spacing: 0.05em; text-transform: uppercase;">Pinned</span>
+              <button class="sort-btn-main pinned-btn" style="flex: 1; justify-content: space-between; padding: 4px 10px; width: 100%;">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: flex; align-items: center; color: var(--text-mute);">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <g transform="rotate(45 12 12)">
+                        <path d="M12 17v5" />
+                        <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                      </g>
+                    </svg>
+                  </span>
+                  <span class="pinned-header-sep"></span>
+                  <span style="letter-spacing: 0.05em; text-transform: uppercase;">Pinned</span>
+                </span>
                 <div class="icon-transition-wrap" style="width: 14px; height: 14px; display: grid; place-items: center;">
-                  <svg class="transition-icon active" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.4s var(--ease-out);">
+                  <svg class="transition-icon active pinned-chevron-up" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 15l-6-6-6 6" />
+                  </svg>
+                  <svg class="transition-icon pinned-chevron-down" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 9l6 6 6-6" />
                   </svg>
                 </div>
               </button>
             </div>
           `;
           const headerBtn = headerWrap.querySelector('button');
-          const headerSvg = headerWrap.querySelector('svg');
+          const chevronUp = headerWrap.querySelector('.pinned-chevron-up');
+          const chevronDown = headerWrap.querySelector('.pinned-chevron-down');
           const sortControl = headerWrap.querySelector('.sort-control');
           
           sortControl.addEventListener('mouseover', () => {
@@ -941,9 +957,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
               }
           });
 
-          if (isPinnedCollapsed) {
-            headerSvg.style.transform = "rotate(180deg)";
-          }
+          chevronUp.classList.toggle("active", !isPinnedCollapsed);
+          chevronDown.classList.toggle("active", isPinnedCollapsed);
           o.appendChild(headerWrap);
 
           const pinnedContainer = document.createElement("li");
@@ -998,7 +1013,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
              isPinnedCollapsed = !isPinnedCollapsed;
              
              if (isPinnedCollapsed) {
-                headerSvg.style.transform = "rotate(180deg)";
+                chevronUp.classList.remove("active");
+                chevronDown.classList.add("active");
                 pinnedContainer.style.height = pinnedContainer.scrollHeight + "px";
                 pinnedContainer.offsetHeight; // force layout
                 pinnedContainer.style.overflow = "hidden";
@@ -1018,7 +1034,8 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
                    Qe();
                 }, 300);
              } else {
-                headerSvg.style.transform = "rotate(0deg)";
+                chevronUp.classList.add("active");
+                chevronDown.classList.remove("active");
                 
                 pinnedContainer.style.height = "auto";
                 const targetHeight = pinnedContainer.scrollHeight;

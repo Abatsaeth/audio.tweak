@@ -1123,7 +1123,7 @@ body[data-cursor="pointer"] .cursor-shape::after,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px 10px;
+  padding: 14px 14px 10px;
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1169,6 +1169,12 @@ body[data-cursor="pointer"] .cursor-shape::after,
   height: 12px;
   background: var(--hairline);
   pointer-events: none;
+}
+.pinned-header-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+  flex-shrink: 0;
 }
 .searchbar-placeholder {
   position: absolute;
@@ -1225,7 +1231,13 @@ body[data-cursor="pointer"] .cursor-shape::after,
 .library-count {
   color: var(--text-soft);
   background: rgb(255 255 255 / 5%);
+  height: 24px;
+  min-width: 34px;
   padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .sort-wrap {
   position: relative;
@@ -1235,6 +1247,7 @@ body[data-cursor="pointer"] .cursor-shape::after,
 .sort-control {
   display: flex;
   align-items: stretch;
+  height: 24px;
   background: rgb(255 255 255 / 4%);
   border: 1px solid var(--hairline);
   border-radius: 6px;
