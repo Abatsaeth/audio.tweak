@@ -1,4 +1,4 @@
-# License - a
+# License
 
 This project is dual-licensed under your choice of the **MIT License** or the **ISC License**. You may use it under the terms of either one.
 
