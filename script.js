@@ -470,9 +470,17 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           (ye && ye.classList.contains("open")
             ? Bt()
             : J && J.classList.contains("open") && Oe(!1));
-        if ((e.key === " " || e.key === "k" || e.key === "K") && document.body.classList.contains("has-player") && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+        const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
+        if ((e.key === " " || e.key === "k" || e.key === "K") && document.body.classList.contains("has-player") && !isInput) {
           e.preventDefault();
           if (i) mt(i);
+        }
+        if (!isInput && document.body.classList.contains("has-player") && u && u.duration) {
+          if (/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            retProg();
+            u.currentTime = u.duration * (parseInt(e.key, 10) / 10);
+          }
         }
       }),
       pe &&

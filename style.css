@@ -2733,7 +2733,7 @@ body.has-player .brand {
 }
 .info-content-wrap.has-scroll.is-dragging .info-content,
 .info-content-wrap.has-scroll:hover .info-content {
-  padding-right: 10px;
+  padding-right: 0px;
 }
 .info-row {
   display: flex;
@@ -3191,7 +3191,7 @@ body.has-player .toast-container {
   min-height: 1px;
   flex-shrink: 0;
   background: var(--hairline-2);
-  margin: 8px 14px;
+  margin: 8px 0px;
 }
 .rail-sound-sep {
   height: 1px;
