@@ -319,6 +319,9 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           f.classList.toggle("on", c),
           f.setAttribute("data-tip", c ? "Shuffle: on" : "Shuffle: off"));
       }
+      function updateShuffleAvailability() {
+        f.classList.toggle("is-unavailable", b().length <= 1);
+      }
       function H(e) {
         ((d = e),
           w.classList.remove("on", "one"),
@@ -387,7 +390,9 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         p?.addEventListener("click", () => {
           i && jt(i);
         }),
-        f?.addEventListener("click", () => j(!c)),
+        f?.addEventListener("click", () => {
+          b().length <= 1 || j(!c);
+        }),
         w?.addEventListener("click", () => {
           (b().length <= 1 ? H(2 === d ? 0 : 2) : H((d + 1) % 3),
             u &&
@@ -397,6 +402,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         }),
         H(0),
         j(!1),
+        updateShuffleAvailability(),
         n.addEventListener("mousedown", I),
         n.addEventListener("touchstart", I, { passive: !1 }),
         r.addEventListener("mousedown", (e) => {
@@ -407,7 +413,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
         window.addEventListener("mouseup", Y),
         window.addEventListener("touchend", Y),
         B(!1),
-        { root: e, update: q, setPlayState: B }
+        { root: e, update: q, setPlayState: B, updateShuffleAvailability }
       );
     })();
     function Oe(e) {
@@ -914,6 +920,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
     }
     function dt({ newIds: e = [] } = {}) {
       const n = b();
+      Ne.updateShuffleAvailability();
       if (te) {
         const pinnedItems = n.filter(x => x.pinned);
         const unpinnedItems = n.filter(x => !x.pinned);
