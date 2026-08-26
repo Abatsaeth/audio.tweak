@@ -320,7 +320,10 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           f.setAttribute("data-tip", c ? "Shuffle: on" : "Shuffle: off"));
       }
       function updateShuffleAvailability() {
-        f.classList.toggle("is-unavailable", b().length <= 1);
+        const hasMultiple = b().length > 1;
+        f.classList.toggle("is-unavailable", !hasMultiple);
+        g.classList.toggle("is-unavailable", !hasMultiple);
+        v.classList.toggle("is-unavailable", !hasMultiple);
       }
       function H(e) {
         ((d = e),

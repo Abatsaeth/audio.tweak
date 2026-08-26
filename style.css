@@ -2487,7 +2487,9 @@ body.has-player .brand {
 .pc-btn.on:hover {
   background: rgb(226 52 74 / 18%);
 }
-.pc-shuffle {
+.pc-shuffle,
+.pc-prev,
+.pc-next {
   transition:
     transform var(--d-mid) var(--ease-out),
     background var(--d-mid) var(--ease-soft),
@@ -2496,7 +2498,9 @@ body.has-player .brand {
     box-shadow var(--d-mid) var(--ease-soft),
     opacity var(--d-mid) var(--ease-soft);
 }
-.pc-shuffle.is-unavailable {
+.pc-shuffle.is-unavailable,
+.pc-prev.is-unavailable,
+.pc-next.is-unavailable {
   opacity: 0.35;
   pointer-events: none;
 }
