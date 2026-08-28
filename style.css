@@ -2348,9 +2348,10 @@ body.has-player .brand {
   right: 0;
   top: 50%;
   height: 4px;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scaleY(1);
   background: rgb(255 255 255 / 10%);
   border-radius: 3px;
+  transition: transform var(--d-mid) var(--ease-soft);
 }
 .pp-fill {
   position: absolute;
@@ -2358,11 +2359,12 @@ body.has-player .brand {
   top: 50%;
   height: 4px;
   width: 0%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scaleY(1);
   transform-origin: left center;
   background: linear-gradient(90deg, var(--red), var(--red-soft));
   border-radius: 3px;
-  will-change: width;
+  will-change: width, transform;
+  transition: transform var(--d-mid) var(--ease-soft);
 }
 .pp-thumb {
   position: absolute;
@@ -2387,7 +2389,7 @@ body.has-player .brand {
   border: 2.5px solid var(--red);
   box-shadow: 0 0 12px rgb(226 52 74 / 40%);
   transition:
-    transform var(--d-mid) var(--ease-out),
+    transform var(--d-mid) var(--ease-soft),
     box-shadow var(--d-mid) var(--ease-soft);
 }
 .pp-thumb.dragging .pp-thumb-dot,
@@ -2396,6 +2398,11 @@ body.has-player .brand {
   box-shadow:
     0 0 0 8px rgb(226 52 74 / 16%),
     0 0 18px rgb(226 52 74 / 45%);
+}
+.pp-track:hover::before,
+.pp-track:hover .pp-fill {
+  transform: scale(1.15);
+  transform: translateY(-50%) scaleY(1.5);
 }
 .pp-times {
   position: relative;

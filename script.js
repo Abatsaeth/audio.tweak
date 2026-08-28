@@ -364,6 +364,7 @@ let isTimeEndFading = false; function toggleTimeEndFading(a){isTimeEndFading = a
           n.classList.remove("dragging"),
           u && Ne.update(u.currentTime, u.duration || 0));
       }
+      window.addEventListener("mouseup", Y);
       return (
         h?.addEventListener("click", () => {
           i && mt(i);
