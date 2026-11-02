@@ -2393,15 +2393,20 @@ body.has-player .brand {
     box-shadow var(--d-mid) var(--ease-soft);
 }
 .pp-thumb.dragging .pp-thumb-dot,
+.pp-track.dragging .pp-thumb-dot,
+.player-progress.dragging .pp-thumb-dot,
 .pp-track:hover .pp-thumb-dot {
   transform: scale(1.15);
   box-shadow:
     0 0 0 8px rgb(226 52 74 / 16%),
     0 0 18px rgb(226 52 74 / 45%);
 }
+.pp-track.dragging::before,
+.pp-track.dragging .pp-fill,
+.player-progress.dragging .pp-track::before,
+.player-progress.dragging .pp-fill,
 .pp-track:hover::before,
 .pp-track:hover .pp-fill {
-  transform: scale(1.15);
   transform: translateY(-50%) scaleY(1.5);
 }
 .pp-times {
