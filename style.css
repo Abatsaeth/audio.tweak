@@ -1844,6 +1844,60 @@ body[data-cursor="pointer"] .cursor-shape::after,
   opacity: 0;
   transform: scale(0.75);
 }
+
+.sound-thumb.has-cover,
+.rail-sound.has-cover {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  overflow: hidden;
+  position: relative;
+}
+
+.sound-thumb.has-cover .ico-default,
+.rail-sound.has-cover .ico-default {
+  opacity: 0 !important;
+}
+
+.sound-thumb.has-cover::after,
+.rail-sound.has-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(0 0 0 / 0%);
+  transition: background var(--d-mid) var(--ease-soft);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sound-thumb.has-cover:hover::after,
+.rail-sound.has-cover:hover::after,
+.sound-card.active .sound-thumb.has-cover::after,
+.rail-sound.active.has-cover::after,
+.sound-card.is-playing .sound-thumb.has-cover::after,
+.rail-sound.is-playing.has-cover::after {
+  background: rgb(0 0 0 / 42%);
+}
+
+.sound-thumb.has-cover > span,
+.rail-sound.has-cover > span {
+  z-index: 2;
+}
+
+.sound-thumb.has-cover svg,
+.rail-sound.has-cover svg {
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 80%));
+}
+
+.sound-card.active .sound-thumb.has-cover,
+.rail-sound.active.has-cover {
+  background-color: transparent !important;
+  border-color: rgb(226 52 74 / 70%);
+  box-shadow:
+    0 0 0 1px rgb(226 52 74 / 40%),
+    0 3px 12px rgb(226 52 74 / 35%);
+}
 .sound-meta {
   min-width: 0;
   display: flex;
@@ -2179,9 +2233,21 @@ body.has-player .brand {
     transparent 60%
   );
 }
-.topbar-inner.fading .topbar-name, .topbar-inner.fading .topbar-sep, .topbar-inner.fading .topbar-meta {
+.topbar-inner.fading .topbar-name, .topbar-inner.fading .topbar-sep, .topbar-inner.fading .topbar-meta, .topbar-inner.fading .topbar-cover {
   transition: opacity 0.2s var(--ease-soft);
   opacity: 0;
+}
+.topbar-cover {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid var(--hairline-2);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+  transition: opacity 0.2s var(--ease-soft);
 }
 .topbar-name {
   transition: opacity 0.2s var(--ease-soft);

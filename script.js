@@ -262,6 +262,7 @@
       genre: "N/A",
       track: "N/A",
       year: "N/A",
+      picture: null,
     };
     if (!buffer || buffer.byteLength < 10) return tags;
     const view = new DataView(buffer);
@@ -318,6 +319,93 @@
       if (!v) return "N/A";
       const s = String(v).replace(/\0/g, "").trim();
       return s.length > 0 ? s : "N/A";
+    }
+
+    function extractAPIC(slice, ver) {
+      if (!slice || slice.length < 8) return null;
+      try {
+        const enc = slice[0];
+        let pos = 1;
+        let mime = "image/jpeg";
+        if (ver === 2) {
+          if (pos + 3 > slice.length) return null;
+          const fmt = String.fromCharCode(slice[pos], slice[pos + 1], slice[pos + 2]).toLowerCase();
+          pos += 3;
+          mime = fmt === "png" ? "image/png" : fmt === "gif" ? "image/gif" : "image/jpeg";
+          pos += 1;
+          if (enc === 1 || enc === 2) {
+            while (pos + 1 < slice.length && !(slice[pos] === 0 && slice[pos + 1] === 0)) pos += 2;
+            pos += 2;
+          } else {
+            while (pos < slice.length && slice[pos] !== 0) pos++;
+            pos++;
+          }
+        } else {
+          let mimeEnd = pos;
+          while (mimeEnd < slice.length && slice[mimeEnd] !== 0) mimeEnd++;
+          if (mimeEnd > pos) {
+            let mStr = "";
+            for (let i = pos; i < mimeEnd; i++) mStr += String.fromCharCode(slice[i]);
+            mStr = mStr.trim().toLowerCase();
+            if (mStr && mStr !== "-->") mime = mStr;
+          }
+          pos = mimeEnd + 1;
+          if (pos >= slice.length) return null;
+          pos += 1; // picture type
+          if (enc === 1 || enc === 2) {
+            while (pos + 1 < slice.length && !(slice[pos] === 0 && slice[pos + 1] === 0)) pos += 2;
+            pos += 2;
+          } else {
+            while (pos < slice.length && slice[pos] !== 0) pos++;
+            pos++;
+          }
+        }
+        if (pos >= slice.length) return null;
+        const imgData = slice.subarray(pos);
+        if (imgData.length < 4) return null;
+        if (imgData[0] === 0x89 && imgData[1] === 0x50 && imgData[2] === 0x4e && imgData[3] === 0x47) {
+          mime = "image/png";
+        } else if (imgData[0] === 0xff && imgData[1] === 0xd8) {
+          mime = "image/jpeg";
+        } else if (imgData[0] === 0x47 && imgData[1] === 0x49 && imgData[2] === 0x46) {
+          mime = "image/gif";
+        } else if (imgData[0] === 0x52 && imgData[1] === 0x49 && imgData[2] === 0x46 && imgData[3] === 0x46) {
+          mime = "image/webp";
+        }
+        return { data: imgData, mime };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function parseFlacPictureBlock(u8, offset, length) {
+      if (!u8 || offset + length > u8.length || length < 32) return null;
+      try {
+        const v = new DataView(u8.buffer, u8.byteOffset + offset, length);
+        let p = 0;
+        p += 4; // picture type
+        const mimeLen = v.getUint32(p, false);
+        p += 4;
+        if (p + mimeLen > length) return null;
+        let mime = "";
+        for (let i = 0; i < mimeLen; i++) mime += String.fromCharCode(u8[offset + p + i]);
+        mime = mime.trim().toLowerCase() || "image/jpeg";
+        p += mimeLen;
+        const descLen = v.getUint32(p, false);
+        p += 4 + descLen;
+        if (p + 16 > length) return null;
+        p += 16; // width, height, depth, colors
+        const dataLen = v.getUint32(p, false);
+        p += 4;
+        if (p + dataLen > length) return null;
+        const imgData = u8.subarray(offset + p, offset + p + dataLen);
+        if (imgData.length < 4) return null;
+        if (imgData[0] === 0x89 && imgData[1] === 0x50) mime = "image/png";
+        else if (imgData[0] === 0xff && imgData[1] === 0xd8) mime = "image/jpeg";
+        return { data: imgData, mime };
+      } catch (e) {
+        return null;
+      }
     }
 
     // 1. ID3v2
@@ -400,6 +488,11 @@
             const ym = /(\d{4})/.exec(y);
             tags.year = ym ? ym[1] : y;
           }
+        } else if (frameId === "APIC" || frameId === "PIC") {
+          if (!tags.picture) {
+            const pic = extractAPIC(dataSlice, ver);
+            if (pic) tags.picture = pic;
+          }
         }
         pos += frameSize;
       }
@@ -418,7 +511,9 @@
         pos += 4;
         if (type === 4) {
           parseVorbisComment(pos, length);
-          return true;
+        } else if (type === 6 && !tags.picture) {
+          const pic = parseFlacPictureBlock(bytes, pos, length);
+          if (pic) tags.picture = pic;
         }
         pos += length;
         if (isLast) break;
@@ -455,6 +550,22 @@
           else if ((key === "DATE" || key === "YEAR") && tags.year === "N/A") {
             const ym = /(\d{4})/.exec(val);
             tags.year = ym ? ym[1] : val;
+          } else if (key === "METADATA_BLOCK_PICTURE" && !tags.picture) {
+            try {
+              const raw = atob(val);
+              const u8 = new Uint8Array(raw.length);
+              for (let j = 0; j < raw.length; j++) u8[j] = raw.charCodeAt(j);
+              const pic = parseFlacPictureBlock(u8, 0, u8.length);
+              if (pic) tags.picture = pic;
+            } catch (err) {}
+          } else if (key === "COVERART" && !tags.picture) {
+            try {
+              const raw = atob(val);
+              const u8 = new Uint8Array(raw.length);
+              for (let j = 0; j < raw.length; j++) u8[j] = raw.charCodeAt(j);
+              let mime = (u8[0] === 0x89 && u8[1] === 0x50) ? "image/png" : "image/jpeg";
+              tags.picture = { data: u8, mime };
+            } catch (err) {}
           }
         }
       }
@@ -519,7 +630,33 @@
       return true;
     }
 
-    // 5. ID3v1
+    // 5. MP4 / M4A covr
+    function parseMP4() {
+      if (buffer.byteLength < 32) return false;
+      const maxScan = Math.min(buffer.byteLength - 16, 2097152);
+      for (let i = 0; i < maxScan; i++) {
+        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6f && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) {
+          let p = i + 4;
+          while (p + 16 < buffer.byteLength) {
+            const size = view.getUint32(p, false);
+            const name = String.fromCharCode(bytes[p + 4], bytes[p + 5], bytes[p + 6], bytes[p + 7]);
+            if (name === "data") {
+              const type = view.getUint32(p + 8, false);
+              const mime = type === 14 ? "image/png" : "image/jpeg";
+              const imgData = bytes.subarray(p + 16, p + size);
+              if (imgData.length > 0) tags.picture = { data: imgData, mime };
+              return true;
+            }
+            if (size <= 0) break;
+            p += size;
+          }
+          break;
+        }
+      }
+      return false;
+    }
+
+    // 6. ID3v1
     function parseID3v1() {
       if (buffer.byteLength < 128) return;
       const p = buffer.byteLength - 128;
@@ -540,7 +677,7 @@
       }
     }
 
-    parseID3v2(0) || parseFLAC() || parseOGG() || parseWAV();
+    parseID3v2(0) || parseFLAC() || parseOGG() || parseWAV() || parseMP4();
     parseID3v1();
 
     return tags;
@@ -656,7 +793,9 @@
       De = e("#topbarNameInner"),
       He = e("#topbarType"),
       Re = e("#topbarSize"),
-      Ie = e("#topbarDuration");
+      Ie = e("#topbarDuration"),
+      topbarCover = e("#topbarCover"),
+      topbarCoverSep = e("#topbarCoverSep");
     let Pe = null,
       Ye = null,
       isPinnedCollapsed = false;
@@ -830,6 +969,11 @@
         f.classList.toggle("is-unavailable", !hasMultiple);
         g.classList.toggle("is-unavailable", !hasMultiple);
         v.classList.toggle("is-unavailable", !hasMultiple);
+
+        if (!hasMultiple) {
+          if (c) j(false);
+          if (d === 1) H(2);
+        }
       }
 
       function H(e) {
@@ -904,10 +1048,30 @@
           i && jt(i);
         }),
         f?.addEventListener("click", () => {
-          b().length <= 1 || j(!c);
+          if (b().length <= 1) return;
+          if (c) {
+            j(false);
+          } else {
+            if (d !== 0) H(0);
+            j(true);
+            u &&
+              (u.ended || (u.paused && k > 0 && Math.abs(u.currentTime - k) < 0.5)) &&
+              Lt();
+          }
         }),
         w?.addEventListener("click", () => {
-          b().length <= 1 ? H(2 === d ? 0 : 2) : H((d + 1) % 3);
+          const hasMultiple = b().length > 1;
+          if (!hasMultiple) {
+            if (c) j(false);
+            H(d === 2 ? 0 : 2);
+          } else {
+            if (c) {
+              j(false);
+              H(1);
+            } else {
+              H((d + 1) % 3);
+            }
+          }
           u &&
             (u.ended || (u.paused && k > 0 && Math.abs(u.currentTime - k) < 0.5)) &&
             (2 === d ? ((retProg(), (u.currentTime = 0)), bt()) : 1 === d && Lt());
@@ -960,6 +1124,17 @@
           "mpeg" === o && (o = "mp3"),
           "wave" === o && (o = "wav"));
 
+        let coverUrl = null;
+        let tags = null;
+        try {
+          const ab = await e.arrayBuffer();
+          tags = parseAudioTags(ab);
+          if (tags && tags.picture && tags.picture.data) {
+            const blob = new Blob([tags.picture.data], { type: tags.picture.mime || "image/jpeg" });
+            coverUrl = URL.createObjectURL(blob);
+          }
+        } catch (err) {}
+
         r.push({
           id: s++,
           name: Y(e.name) || "Untitled",
@@ -969,6 +1144,8 @@
           url: t,
           file: e,
           addedAt: Date.now(),
+          tags: tags,
+          coverUrl: coverUrl,
         });
       }
       ot(i, o.length ? r.slice(-o.length).map((e) => e.id) : []);
@@ -1697,8 +1874,11 @@
 
     function ut(e) {
       const t = document.createElement("li");
+      t.className = "rail-sound" + (e.coverUrl ? " has-cover" : "");
+      if (e.coverUrl) {
+        t.style.setProperty("background-image", `url("${e.coverUrl}")`, "important");
+      }
       return (
-        (t.className = "rail-sound"),
         (t.dataset.id = String(e.id)),
         e.id === i && t.classList.add("active"),
         e.id === i && l && t.classList.add("is-playing"),
@@ -1731,7 +1911,7 @@
         n.id === i && o.classList.add("active"),
         n.id === i && l && o.classList.add("is-playing"),
         (o.innerHTML = `
-        <div class="sound-thumb" aria-hidden="true">
+        <div class="sound-thumb ${n.coverUrl ? "has-cover" : ""}" aria-hidden="true" ${n.coverUrl ? `style="background-image: url('${n.coverUrl}') !important;"` : ""}>
           <span class="ico-default">${q}</span>
           <span class="ico-hover">${B}</span>
           <span class="ico-active">
@@ -2151,7 +2331,7 @@
     function Mt() {
       if (2 === d && u)
         return (retProg(), (u.currentTime = 0)), void u.play().catch(() => {});
-      1 === d ? Lt() : yt();
+      1 === d || c ? Lt() : yt();
     }
     function Et() {
       const e = r.find((e) => e.id === i);
@@ -2186,6 +2366,8 @@
             He && (He.textContent = ""),
             Re && (Re.textContent = ""),
             Ie && (Ie.textContent = ""),
+            topbarCover && (topbarCover.style.backgroundImage = "", topbarCover.style.display = "none"),
+            topbarCoverSep && (topbarCoverSep.style.display = "none"),
             ze && ze.classList.remove("long"),
             void (Ye = null)
           );
@@ -2213,6 +2395,17 @@
       He && (He.textContent = e.format);
       Re && (Re.textContent = H(e.size));
       Ie && (Ie.textContent = R(e.duration));
+      if (topbarCover && topbarCoverSep) {
+        if (e && e.coverUrl) {
+          topbarCover.style.setProperty("background-image", `url("${e.coverUrl}")`);
+          topbarCover.style.display = "block";
+          topbarCoverSep.style.display = "block";
+        } else {
+          topbarCover.style.backgroundImage = "";
+          topbarCover.style.display = "none";
+          topbarCoverSep.style.display = "none";
+        }
+      }
       requestAnimationFrame(() => {
         W(ze, De);
       });
@@ -2257,6 +2450,11 @@
       try {
         URL.revokeObjectURL(d.url);
       } catch (err) {}
+      if (d.coverUrl) {
+        try {
+          URL.revokeObjectURL(d.coverUrl);
+        } catch (err) {}
+      }
       if (i === e) {
         i = null;
         if (u) {
@@ -2313,8 +2511,15 @@
           reader.onload = async (ev) => {
             try {
               const arrayBuffer = ev.target.result;
-              // Extract ID3 / Vorbis tags
-              t.tags = parseAudioTags(arrayBuffer);
+              // Extract ID3 / Vorbis tags if not already extracted
+              if (!t.tags) {
+                t.tags = parseAudioTags(arrayBuffer);
+                if (t.tags && t.tags.picture && t.tags.picture.data && !t.coverUrl) {
+                  try {
+                    t.coverUrl = URL.createObjectURL(new Blob([t.tags.picture.data], { type: t.tags.picture.mime || "image/jpeg" }));
+                  } catch (err) {}
+                }
+              }
 
               const AudioCtx = window.AudioContext || window.webkitAudioContext;
               const audioCtx = new AudioCtx();

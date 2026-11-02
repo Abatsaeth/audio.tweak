@@ -7,7 +7,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -428,6 +428,8 @@
     <div class="blur-layer" id="blurLayer" aria-hidden="true"></div>
     <div class="topbar" id="topbar" aria-hidden="true">
       <div class="topbar-inner">
+        <div class="topbar-cover" id="topbarCover" style="display: none;"></div>
+        <div class="topbar-sep topbar-cover-sep" id="topbarCoverSep" aria-hidden="true" style="display: none;"></div>
         <div class="topbar-name" id="topbarName">
           <span class="topbar-name-inner" id="topbarNameInner"></span>
         </div>
