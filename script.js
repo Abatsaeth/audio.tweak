@@ -2,7 +2,7 @@
   "use strict";
   const e = (e, t = document) => t.querySelector(e),
     t = (e, t = document) => Array.from(t.querySelectorAll(e)),
-    n = ["mp3", "ogg", "wav", "flac"],
+    n = ["mp3", "ogg", "wav", "flac", "m4a", "aac", "mp4"],
     o = [
       "audio/mpeg",
       "audio/ogg",
@@ -11,6 +11,10 @@
       "audio/wave",
       "audio/flac",
       "audio/x-flac",
+      "audio/mp4",
+      "audio/m4a",
+      "audio/x-m4a",
+      "audio/aac",
     ];
   let isTimeEndFading = false;
   function toggleTimeEndFading(a) {
@@ -199,6 +203,14 @@
         <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.6"/>
       </svg>`;
 
+  const iconLyrics = `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4 6h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M4 12h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M4 18h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M18 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0V8l4-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
   const H = (e) => {
     const t = e / 1048576;
     return t >= 1 ? `${t.toFixed(2)} MB` : `${(e / 1024).toFixed(0)} KB`;
@@ -262,6 +274,7 @@
       genre: "N/A",
       track: "N/A",
       year: "N/A",
+      lyrics: null,
       picture: null,
     };
     if (!buffer || buffer.byteLength < 10) return tags;
@@ -408,11 +421,151 @@
       }
     }
 
+    function extractUSLT(slice, enc) {
+      if (!slice || slice.length < 4) return null;
+      let p = 3;
+      const isUTF16 = (enc === 1 || enc === 2);
+      let isBE = (enc === 2);
+      if (isUTF16) {
+        if (p + 1 < slice.length) {
+          if (slice[p] === 0xfe && slice[p + 1] === 0xff) {
+            isBE = true;
+            p += 2;
+          } else if (slice[p] === 0xff && slice[p + 1] === 0xfe) {
+            isBE = false;
+            p += 2;
+          }
+        }
+        let descEnd = p;
+        while (descEnd + 1 < slice.length) {
+          if (slice[descEnd] === 0 && slice[descEnd + 1] === 0) {
+            descEnd += 2;
+            break;
+          }
+          descEnd += 2;
+        }
+        const lyrSlice = slice.subarray(descEnd);
+        if (lyrSlice.length > 0) {
+          try {
+            const dec = new TextDecoder(isBE ? "utf-16be" : "utf-16");
+            const text = dec.decode(lyrSlice).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+            if (text) return text;
+          } catch (e) {}
+        }
+        try {
+          const dec = new TextDecoder(isBE ? "utf-16be" : "utf-16");
+          const text = dec.decode(slice.subarray(3)).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+          if (text) return text;
+        } catch (e) {}
+      } else {
+        while (p < slice.length && slice[p] !== 0) p++;
+        if (p < slice.length && slice[p] === 0) p++;
+        const lyrSlice = slice.subarray(p);
+        if (lyrSlice.length > 0) {
+          try {
+            const text = new TextDecoder("utf-8").decode(lyrSlice).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+            if (text) return text;
+          } catch (e) {}
+          try {
+            const text = new TextDecoder("windows-1252").decode(lyrSlice).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+            if (text) return text;
+          } catch (e) {}
+        }
+        try {
+          const text = new TextDecoder("utf-8").decode(slice.subarray(3)).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+          if (text) return text;
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    function extractSYLT(slice, enc) {
+      if (!slice || slice.length < 6) return null;
+      let p = 5;
+      const isUTF16 = (enc === 1 || enc === 2);
+      let isBE = (enc === 2);
+      if (isUTF16) {
+        if (p + 1 < slice.length && ((slice[p] === 0xff && slice[p + 1] === 0xfe) || (slice[p] === 0xfe && slice[p + 1] === 0xff))) p += 2;
+        while (p + 1 < slice.length && !(slice[p] === 0 && slice[p + 1] === 0)) p += 2;
+        p += 2;
+      } else {
+        while (p < slice.length && slice[p] !== 0) p++;
+        p++;
+      }
+      const lines = [];
+      const decoder = isUTF16 ? new TextDecoder(isBE ? "utf-16be" : "utf-16") : new TextDecoder("utf-8");
+      while (p < slice.length) {
+        const textStart = p;
+        if (isUTF16) {
+          while (p + 1 < slice.length && !(slice[p] === 0 && slice[p + 1] === 0)) p += 2;
+          const textSlice = slice.subarray(textStart, p);
+          p += 2;
+          if (p + 4 <= slice.length) p += 4;
+          try {
+            const line = decoder.decode(textSlice).replace(/\0/g, "").trim();
+            if (line) lines.push(line);
+          } catch (e) {}
+        } else {
+          while (p < slice.length && slice[p] !== 0) p++;
+          const textSlice = slice.subarray(textStart, p);
+          p++;
+          if (p + 4 <= slice.length) p += 4;
+          try {
+            const line = decoder.decode(textSlice).replace(/\0/g, "").trim();
+            if (line) lines.push(line);
+          } catch (e) {}
+        }
+      }
+      if (lines.length > 0) return lines.join("\n");
+      return null;
+    }
+
+    function extractTXXX(slice, enc) {
+      if (!slice || slice.length < 2) return null;
+      let p = 0;
+      let desc = "";
+      const isUTF16 = (enc === 1 || enc === 2);
+      let isBE = (enc === 2);
+      const decoder = isUTF16 ? new TextDecoder(isBE ? "utf-16be" : "utf-16") : new TextDecoder("utf-8");
+      if (isUTF16) {
+        if (slice.length >= 2 && ((slice[0] === 0xff && slice[1] === 0xfe) || (slice[0] === 0xfe && slice[1] === 0xff))) p += 2;
+        const descStart = p;
+        while (p + 1 < slice.length && !(slice[p] === 0 && slice[p + 1] === 0)) p += 2;
+        try {
+          desc = decoder.decode(slice.subarray(descStart, p)).trim();
+        } catch (e) {}
+        p += 2;
+      } else {
+        const descStart = p;
+        while (p < slice.length && slice[p] !== 0) p++;
+        try {
+          desc = decoder.decode(slice.subarray(descStart, p)).trim();
+        } catch (e) {}
+        p++;
+      }
+      const cleanDesc = desc.toUpperCase().replace(/[\s_-]+/g, "");
+      if (
+        cleanDesc === "LYRICS" ||
+        cleanDesc === "UNSYNCEDLYRICS" ||
+        cleanDesc === "SYNCEDLYRICS" ||
+        cleanDesc === "LYRIC" ||
+        cleanDesc === "SCRIPT"
+      ) {
+        const valSlice = slice.subarray(p);
+        try {
+          const val = decoder.decode(valSlice).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+          if (val) return val;
+        } catch (e) {}
+      }
+      return null;
+    }
+
     // 1. ID3v2
     function parseID3v2(offset = 0) {
       if (offset + 10 > buffer.byteLength) return false;
       if (bytes[offset] !== 0x49 || bytes[offset + 1] !== 0x44 || bytes[offset + 2] !== 0x33) return false;
       const ver = bytes[offset + 3];
+      const flags = bytes[offset + 5];
       const tagSize =
         ((bytes[offset + 6] & 0x7f) << 21) |
         ((bytes[offset + 7] & 0x7f) << 14) |
@@ -420,6 +573,22 @@
         (bytes[offset + 9] & 0x7f);
       let pos = offset + 10;
       const end = Math.min(buffer.byteLength, offset + 10 + tagSize);
+
+      if ((flags & 0x40) !== 0 && pos + 4 <= end) {
+        let extSize = 0;
+        if (ver === 3) {
+          extSize = view.getUint32(pos, false) + 4;
+        } else if (ver === 4) {
+          extSize =
+            ((bytes[pos] & 0x7f) << 21) |
+            ((bytes[pos + 1] & 0x7f) << 14) |
+            ((bytes[pos + 2] & 0x7f) << 7) |
+            (bytes[pos + 3] & 0x7f);
+        }
+        if (extSize > 0 && pos + extSize <= end) {
+          pos += extSize;
+        }
+      }
 
       while (pos + 10 <= end) {
         let frameId = "";
@@ -434,11 +603,18 @@
           frameId = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]);
           if (frameId.charCodeAt(0) === 0) break;
           if (ver === 4) {
-            frameSize =
+            const syncSafe =
               ((bytes[pos + 4] & 0x7f) << 21) |
               ((bytes[pos + 5] & 0x7f) << 14) |
               ((bytes[pos + 6] & 0x7f) << 7) |
               (bytes[pos + 7] & 0x7f);
+            const standard =
+              (bytes[pos + 4] << 24) | (bytes[pos + 5] << 16) | (bytes[pos + 6] << 8) | bytes[pos + 7];
+            if (bytes[pos + 4] > 127 || bytes[pos + 5] > 127 || bytes[pos + 6] > 127 || bytes[pos + 7] > 127) {
+              frameSize = standard;
+            } else {
+              frameSize = syncSafe;
+            }
           } else {
             frameSize = (bytes[pos + 4] << 24) | (bytes[pos + 5] << 16) | (bytes[pos + 6] << 8) | bytes[pos + 7];
           }
@@ -454,16 +630,28 @@
         } else if (frameId === "TALB" || frameId === "TAL") {
           if (tags.album === "N/A") tags.album = cleanVal(decodeText(dataSlice, enc));
         } else if (frameId === "COMM" || frameId === "COM") {
-          if (tags.comment === "N/A") {
-            let cpos = 3;
-            if (enc === 1 || enc === 2) {
-              while (cpos + 1 < dataSlice.length && !(dataSlice[cpos] === 0 && dataSlice[cpos + 1] === 0)) cpos += 2;
-              cpos += 2;
-            } else {
-              while (cpos < dataSlice.length && dataSlice[cpos] !== 0) cpos++;
-              cpos++;
-            }
-            tags.comment = cleanVal(decodeText(dataSlice.subarray(cpos), enc));
+          let cpos = 3;
+          let desc = "";
+          if (enc === 1 || enc === 2) {
+            while (cpos + 1 < dataSlice.length && !(dataSlice[cpos] === 0 && dataSlice[cpos + 1] === 0)) cpos += 2;
+            try {
+              desc = new TextDecoder(enc === 2 ? "utf-16be" : "utf-16").decode(dataSlice.subarray(3, cpos)).trim();
+            } catch (e) {}
+            cpos += 2;
+          } else {
+            while (cpos < dataSlice.length && dataSlice[cpos] !== 0) cpos++;
+            try {
+              desc = new TextDecoder("utf-8").decode(dataSlice.subarray(3, cpos)).trim();
+            } catch (e) {}
+            cpos++;
+          }
+          const commentText = cleanVal(decodeText(dataSlice.subarray(cpos), enc));
+          if (tags.comment === "N/A") tags.comment = commentText;
+          const cleanDesc = desc.toUpperCase().replace(/[\s_-]+/g, "");
+          if ((cleanDesc === "LYRICS" || cleanDesc === "UNSYNCEDLYRICS" || cleanDesc === "LYRIC") && !tags.lyrics && commentText !== "N/A") {
+            tags.lyrics = commentText;
+          } else if (!tags.lyrics && commentText !== "N/A" && commentText.length > 50 && commentText.includes("\n")) {
+            tags.lyrics = commentText;
           }
         } else if (frameId === "TCOM" || frameId === "TCM") {
           if (tags.composer === "N/A") tags.composer = cleanVal(decodeText(dataSlice, enc));
@@ -487,6 +675,21 @@
             const y = cleanVal(decodeText(dataSlice, enc));
             const ym = /(\d{4})/.exec(y);
             tags.year = ym ? ym[1] : y;
+          }
+        } else if (frameId === "USLT" || frameId === "ULT") {
+          if (!tags.lyrics) {
+            const lyr = extractUSLT(dataSlice, enc);
+            if (lyr) tags.lyrics = lyr;
+          }
+        } else if (frameId === "SYLT" || frameId === "SLT") {
+          if (!tags.lyrics) {
+            const lyr = extractSYLT(dataSlice, enc);
+            if (lyr) tags.lyrics = lyr;
+          }
+        } else if (frameId === "TXXX" || frameId === "TXX") {
+          if (!tags.lyrics) {
+            const lyr = extractTXXX(dataSlice, enc);
+            if (lyr) tags.lyrics = lyr;
           }
         } else if (frameId === "APIC" || frameId === "PIC") {
           if (!tags.picture) {
@@ -549,7 +752,19 @@
           else if ((key === "TRACKNUMBER" || key === "TRACK") && tags.track === "N/A") tags.track = val;
           else if ((key === "DATE" || key === "YEAR") && tags.year === "N/A") {
             const ym = /(\d{4})/.exec(val);
-            tags.year = ym ? ym[1] : val;
+          } else if (
+            key === "LYRICS" ||
+            key === "UNSYNCEDLYRICS" ||
+            key === "UNSYNCED LYRICS" ||
+            key === "UNSYNCED_LYRICS" ||
+            key === "SYNCEDLYRICS" ||
+            key === "LYRIC" ||
+            key === "TEXT"
+          ) {
+            const rawVal = str.slice(eq + 1).replace(/\0/g, "").trim();
+            if (rawVal) {
+              tags.lyrics = tags.lyrics ? tags.lyrics + "\n" + rawVal : rawVal;
+            }
           } else if (key === "METADATA_BLOCK_PICTURE" && !tags.picture) {
             try {
               const raw = atob(val);
@@ -630,33 +845,242 @@
       return true;
     }
 
-    // 5. MP4 / M4A covr
+    // 5. MP4 / M4A metadata & cover & lyrics
     function parseMP4() {
       if (buffer.byteLength < 32) return false;
-      const maxScan = Math.min(buffer.byteLength - 16, 2097152);
-      for (let i = 0; i < maxScan; i++) {
-        if (bytes[i] === 0x63 && bytes[i + 1] === 0x6f && bytes[i + 2] === 0x76 && bytes[i + 3] === 0x72) {
-          let p = i + 4;
-          while (p + 16 < buffer.byteLength) {
-            const size = view.getUint32(p, false);
-            const name = String.fromCharCode(bytes[p + 4], bytes[p + 5], bytes[p + 6], bytes[p + 7]);
-            if (name === "data") {
-              const type = view.getUint32(p + 8, false);
-              const mime = type === 14 ? "image/png" : "image/jpeg";
-              const imgData = bytes.subarray(p + 16, p + size);
-              if (imgData.length > 0) tags.picture = { data: imgData, mime };
-              return true;
-            }
-            if (size <= 0) break;
-            p += size;
+      let foundAny = false;
+      const scanLimit = Math.min(buffer.byteLength - 8, 33554432);
+
+      function extractDataPayload(startPos) {
+        let p = startPos;
+        while (p + 16 <= buffer.byteLength) {
+          const sz = view.getUint32(p, false);
+          if (sz < 8 || p + sz > buffer.byteLength) break;
+          const nm = String.fromCharCode(bytes[p + 4], bytes[p + 5], bytes[p + 6], bytes[p + 7]);
+          if (nm === "data") {
+            const type = view.getUint32(p + 8, false);
+            const payload = bytes.subarray(p + 16, p + sz);
+            return { type, payload };
           }
+          p += sz;
+        }
+        return null;
+      }
+
+      for (let i = 0; i < scanLimit; i++) {
+        const b0 = bytes[i];
+        const b1 = bytes[i + 1];
+        const b2 = bytes[i + 2];
+        const b3 = bytes[i + 3];
+
+        if (
+          (b0 === 0xa9 && b1 === 0x6c && b2 === 0x79 && b3 === 0x72) ||
+          (b0 === 0xa9 && b1 === 0x4c && b2 === 0x59 && b3 === 0x52) ||
+          (b0 === 0x6c && b1 === 0x79 && b2 === 0x72 && b3 === 0x20)
+        ) {
+          if (!tags.lyrics) {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).replace(/^\0+/, "").replace(/\0+$/, "").trim();
+                if (text) {
+                  tags.lyrics = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (b0 === 0x63 && b1 === 0x6f && b2 === 0x76 && b3 === 0x72) {
+          if (!tags.picture) {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              const mime = res.type === 14 ? "image/png" : "image/jpeg";
+              tags.picture = { data: res.payload, mime };
+              foundAny = true;
+            }
+          }
+        } else if (
+          (b0 === 0xa9 && b1 === 0x41 && b2 === 0x52 && b3 === 0x54) ||
+          (b0 === 0x61 && b1 === 0x41 && b2 === 0x52 && b3 === 0x54)
+        ) {
+          if (tags.artist === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                if (text) {
+                  tags.artist = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (b0 === 0xa9 && b1 === 0x61 && b2 === 0x6c && b3 === 0x62) {
+          if (tags.album === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                if (text) {
+                  tags.album = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (b0 === 0xa9 && b1 === 0x64 && b2 === 0x61 && b3 === 0x79) {
+          if (tags.year === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                const m = /(\d{4})/.exec(text);
+                tags.year = m ? m[1] : text;
+                foundAny = true;
+              } catch (e) {}
+            }
+          }
+        } else if (
+          (b0 === 0xa9 && b1 === 0x67 && b2 === 0x65 && b3 === 0x6e) ||
+          (b0 === 0x67 && b1 === 0x6e && b2 === 0x72 && b3 === 0x65)
+        ) {
+          if (tags.genre === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                if (text) {
+                  tags.genre = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (b0 === 0xa9 && b1 === 0x63 && b2 === 0x6d && b3 === 0x74) {
+          if (tags.comment === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                if (text) {
+                  tags.comment = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (b0 === 0xa9 && b1 === 0x77 && b2 === 0x72 && b3 === 0x74) {
+          if (tags.composer === "N/A") {
+            const res = extractDataPayload(i + 4);
+            if (res && res.payload.length > 0) {
+              try {
+                const text = new TextDecoder("utf-8").decode(res.payload).trim();
+                if (text) {
+                  tags.composer = text;
+                  foundAny = true;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      }
+      return foundAny;
+    }
+
+    // 6. APEv2 tags
+    function parseAPEv2() {
+      if (buffer.byteLength < 64) return false;
+      const tagHdr = [0x41, 0x50, 0x45, 0x54, 0x41, 0x47, 0x45, 0x58];
+      let apePos = -1;
+      const startScan = Math.max(0, buffer.byteLength - 131072);
+      for (let i = startScan; i <= buffer.byteLength - 32; i++) {
+        if (
+          bytes[i] === tagHdr[0] &&
+          bytes[i + 1] === tagHdr[1] &&
+          bytes[i + 2] === tagHdr[2] &&
+          bytes[i + 3] === tagHdr[3] &&
+          bytes[i + 4] === tagHdr[4] &&
+          bytes[i + 5] === tagHdr[5] &&
+          bytes[i + 6] === tagHdr[6] &&
+          bytes[i + 7] === tagHdr[7]
+        ) {
+          apePos = i;
           break;
         }
       }
-      return false;
+      if (apePos === -1) {
+        for (let i = 0; i <= Math.min(buffer.byteLength - 32, 65536); i++) {
+          if (
+            bytes[i] === tagHdr[0] &&
+            bytes[i + 1] === tagHdr[1] &&
+            bytes[i + 2] === tagHdr[2] &&
+            bytes[i + 3] === tagHdr[3] &&
+            bytes[i + 4] === tagHdr[4] &&
+            bytes[i + 5] === tagHdr[5] &&
+            bytes[i + 6] === tagHdr[6] &&
+            bytes[i + 7] === tagHdr[7]
+          ) {
+            apePos = i;
+            break;
+          }
+        }
+      }
+      if (apePos === -1) return false;
+      try {
+        const v = new DataView(buffer, apePos, 32);
+        const tagSize = v.getUint32(12, true);
+        const itemCount = v.getUint32(16, true);
+        const flags = v.getUint32(20, true);
+        const isHeader = (flags & (1 << 29)) !== 0;
+        let dataStart = isHeader ? apePos + 32 : apePos - tagSize + 32;
+        if (dataStart < 0 || dataStart + tagSize > buffer.byteLength) dataStart = apePos + 32;
+        let p = dataStart;
+        const end = Math.min(buffer.byteLength, dataStart + tagSize);
+        for (let i = 0; i < itemCount && p + 8 < end; i++) {
+          const valLen = view.getUint32(p, true);
+          const itemFlags = view.getUint32(p + 4, true);
+          p += 8;
+          let key = "";
+          while (p < end && bytes[p] !== 0) {
+            key += String.fromCharCode(bytes[p]);
+            p++;
+          }
+          p++;
+          if (p + valLen > end) break;
+          const isBinary = ((itemFlags >> 1) & 3) === 1;
+          const valBytes = bytes.subarray(p, p + valLen);
+          p += valLen;
+          if (!isBinary) {
+            const textVal = new TextDecoder("utf-8").decode(valBytes).trim();
+            const upperKey = key.toUpperCase().replace(/[\s_-]+/g, "");
+            if (
+              (upperKey === "LYRICS" ||
+                upperKey === "UNSYNCEDLYRICS" ||
+                upperKey === "SYNCEDLYRICS" ||
+                upperKey === "LYRIC") &&
+              !tags.lyrics
+            ) {
+              tags.lyrics = textVal;
+            } else if (upperKey === "ARTIST" && tags.artist === "N/A") {
+              tags.artist = textVal;
+            } else if (upperKey === "ALBUM" && tags.album === "N/A") {
+              tags.album = textVal;
+            } else if (upperKey === "GENRE" && tags.genre === "N/A") {
+              tags.genre = textVal;
+            } else if (upperKey === "YEAR" && tags.year === "N/A") {
+              tags.year = textVal;
+            } else if (upperKey === "COMMENT" && tags.comment === "N/A") {
+              tags.comment = textVal;
+            }
+          }
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
 
-    // 6. ID3v1
+    // 7. ID3v1
     function parseID3v1() {
       if (buffer.byteLength < 128) return;
       const p = buffer.byteLength - 128;
@@ -677,28 +1101,88 @@
       }
     }
 
-    parseID3v2(0) || parseFLAC() || parseOGG() || parseWAV() || parseMP4();
+    // Parse all metadata formats
+    let id3Found = parseID3v2(0);
+    if (!id3Found) {
+      for (let i = 1; i <= Math.min(buffer.byteLength - 10, 65536); i++) {
+        if (bytes[i] === 0x49 && bytes[i + 1] === 0x44 && bytes[i + 2] === 0x33) {
+          if (parseID3v2(i)) {
+            id3Found = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!id3Found && buffer.byteLength > 128) {
+      for (let i = buffer.byteLength - 128; i <= buffer.byteLength - 10; i++) {
+        if (bytes[i] === 0x33 && bytes[i + 1] === 0x44 && bytes[i + 2] === 0x49) {
+          const tagSize =
+            ((bytes[i + 6] & 0x7f) << 21) |
+            ((bytes[i + 7] & 0x7f) << 14) |
+            ((bytes[i + 8] & 0x7f) << 7) |
+            (bytes[i + 9] & 0x7f);
+          const tagOffset = i - tagSize;
+          if (
+            tagOffset >= 0 &&
+            bytes[tagOffset] === 0x49 &&
+            bytes[tagOffset + 1] === 0x44 &&
+            bytes[tagOffset + 2] === 0x33
+          ) {
+            parseID3v2(tagOffset);
+            break;
+          }
+        }
+      }
+    }
+
+    parseFLAC();
+    parseOGG();
+    parseWAV();
+    parseMP4();
+    parseAPEv2();
     parseID3v1();
+
+    if (tags.lyrics) {
+      tags.lyrics = tags.lyrics.replace(/\0/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+      if (!tags.lyrics) tags.lyrics = null;
+    }
 
     return tags;
   }
 
   function U(e) {
-    for (const t of e) t.wrapEl && t.innerEl && (t.innerEl.style.transform = "");
+    for (const t of e) {
+      if (t && t.wrapEl && t.innerEl) {
+        t.innerEl.style.transform = "";
+      }
+    }
     const t = [];
-    for (const n of e)
-      n.wrapEl &&
-        n.innerEl &&
+    for (const n of e) {
+      if (n && n.wrapEl && n.innerEl) {
+        const scrollDiff = n.innerEl.scrollWidth - n.wrapEl.clientWidth;
+        const innerRect = n.innerEl.getBoundingClientRect();
+        const wrapRect = n.wrapEl.getBoundingClientRect();
+        const rectDiff = innerRect.width - wrapRect.width;
+        const overflow = Math.max(scrollDiff, rectDiff);
         t.push({
           wrap: n.wrapEl,
           inner: n.innerEl,
-          overflow: n.innerEl.scrollWidth - n.wrapEl.clientWidth,
+          overflow: overflow,
         });
-    for (const e of t)
-      e.overflow > 4
-        ? (e.wrap.classList.add("long"),
-          e.inner.style.setProperty("--marquee-shift", `-${e.overflow + 8}px`))
-        : e.wrap.classList.remove("long");
+      }
+    }
+    for (const item of t) {
+      if (item.overflow > 0.5) {
+        item.wrap.classList.add("long");
+        item.inner.style.setProperty(
+          "--marquee-shift",
+          `-${Math.ceil(item.overflow) + 24}px`
+        );
+      } else {
+        item.wrap.classList.remove("long");
+        item.inner.style.removeProperty("--marquee-shift");
+      }
+    }
   }
   function W(e, t) {
     U([{ wrapEl: e, innerEl: t }]);
@@ -795,10 +1279,98 @@
       Re = e("#topbarSize"),
       Ie = e("#topbarDuration"),
       topbarCover = e("#topbarCover"),
-      topbarCoverSep = e("#topbarCoverSep");
+      topbarCoverSep = e("#topbarCoverSep"),
+      lyricsModal = e("#lyricsModal"),
+      lyricsTitle = e("#lyricsTitle"),
+      lyricsBody = e("#lyricsBody"),
+      lyricsView = e("#lyricsView"),
+      lyricsText = e("#lyricsText"),
+      lyricsEmpty = e("#lyricsEmpty"),
+      lyricsEditPane = e("#lyricsEditPane"),
+      lyricsTextarea = e("#lyricsTextarea"),
+      lyricsEditToggle = e("#lyricsEditToggle"),
+      lyricsCloseBtn = e("#lyricsCloseBtn"),
+      lyricsSaveBtn = e("#lyricsSaveBtn");
     let Pe = null,
       Ye = null,
-      isPinnedCollapsed = false;
+      isPinnedCollapsed = false,
+      lyricsTrackId = null,
+      isLyricsEditing = false;
+
+    function openLyricsModal(trackId, startEditing = false) {
+      const sound = r.find((s) => s.id === trackId);
+      if (!sound) return;
+      lyricsTrackId = trackId;
+      setLyricsEditMode(startEditing);
+      updateLyricsDisplay(sound);
+      if (lyricsModal) {
+        lyricsModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => {
+          lyricsModal.classList.add("open");
+        });
+      }
+    }
+
+    function closeLyricsModal() {
+      if (lyricsModal && lyricsModal.classList.contains("open")) {
+        lyricsModal.classList.remove("open");
+        lyricsModal.setAttribute("aria-hidden", "true");
+        setLyricsEditMode(false);
+        lyricsTrackId = null;
+      }
+    }
+
+    function updateLyricsDisplay(sound) {
+      const hasLyrics = !!(sound && sound.lyrics && sound.lyrics.trim());
+      if (lyricsText && lyricsEmpty) {
+        if (hasLyrics) {
+          lyricsText.textContent = sound.lyrics.trim();
+          lyricsText.style.display = "block";
+          lyricsEmpty.style.display = "none";
+        } else {
+          lyricsText.textContent = "";
+          lyricsText.style.display = "none";
+          lyricsEmpty.style.display = "flex";
+        }
+      }
+      if (lyricsTextarea) {
+        lyricsTextarea.value = sound && sound.lyrics ? sound.lyrics : "";
+      }
+    }
+
+    function setLyricsEditMode(editing) {
+      isLyricsEditing = !!editing;
+      if (isLyricsEditing) {
+        if (lyricsView) lyricsView.style.display = "none";
+        if (lyricsEditPane) lyricsEditPane.style.display = "flex";
+        if (lyricsSaveBtn) lyricsSaveBtn.style.display = "inline-flex";
+        if (lyricsCloseBtn) lyricsCloseBtn.textContent = "Cancel";
+        lyricsEditToggle && lyricsEditToggle.classList.add("active");
+        setTimeout(() => lyricsTextarea && lyricsTextarea.focus(), 50);
+      } else {
+        if (lyricsView) lyricsView.style.display = "block";
+        if (lyricsEditPane) lyricsEditPane.style.display = "none";
+        if (lyricsSaveBtn) lyricsSaveBtn.style.display = "none";
+        if (lyricsCloseBtn) lyricsCloseBtn.textContent = "Close";
+        lyricsEditToggle && lyricsEditToggle.classList.remove("active");
+      }
+    }
+
+    function saveLyrics() {
+      const sound = r.find((s) => s.id === lyricsTrackId);
+      if (!sound) return;
+      const val = (lyricsTextarea ? lyricsTextarea.value : "").trim();
+      sound.lyrics = val ? val : null;
+      if (sound.tags) {
+        sound.tags.lyrics = sound.lyrics;
+      }
+      updateLyricsDisplay(sound);
+      setLyricsEditMode(false);
+      It("Lyrics saved", "success");
+      if (Ae && Ae.classList.contains("open") && sound.id === a) {
+        jt(sound.id);
+      }
+    }
 
     o && (o.innerHTML = $);
     Q && (Q.innerHTML = $);
@@ -826,6 +1398,9 @@
         <div class="player-controls">
           <button class="pc-btn pc-info" aria-label="Info" data-tip="Info" style="position: absolute; left: 0;">
             ${z}
+          </button>
+          <button class="pc-btn pc-lyrics" aria-label="Lyrics" data-tip="Lyrics" style="position: absolute; left: 46px;">
+            ${iconLyrics}
           </button>
           <button class="pc-btn pc-shuffle" aria-label="Shuffle" data-tip="Shuffle">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -882,6 +1457,7 @@
         a = e.querySelector(".pp-time-end"),
         l = e.querySelector(".pp-times"),
         p = e.querySelector(".pc-info"),
+        pcLyrics = e.querySelector(".pc-lyrics"),
         h = e.querySelector(".pc-play"),
         g = e.querySelector(".pc-prev"),
         v = e.querySelector(".pc-next"),
@@ -1047,6 +1623,13 @@
         p?.addEventListener("click", () => {
           i && jt(i);
         }),
+        pcLyrics?.addEventListener("click", () => {
+          if (i) {
+            openLyricsModal(i);
+          } else {
+            It("No audio playing", "info");
+          }
+        }),
         f?.addEventListener("click", () => {
           if (b().length <= 1) return;
           if (c) {
@@ -1096,12 +1679,30 @@
       );
     })();
 
+    function updateAllMarquees() {
+      if (te) {
+        const cards = t(".sound-card", te);
+        if (cards.length > 0) {
+          const items = cards.map((card) => ({
+            wrapEl: card.querySelector(".sound-name-wrap"),
+            innerEl: card.querySelector(".sound-name"),
+          }));
+          U(items);
+        }
+      }
+      if (ze && De) {
+        W(ze, De);
+      }
+    }
+
     function Oe(e) {
       J && J.classList.toggle("open", e);
       ke && ke.classList.toggle("show", e);
       be && be.classList.toggle("show", e);
       Ne && Ne.root && Ne.root.classList.toggle("shifted", e);
       Fe && Fe.classList.toggle("shifted", e);
+      requestAnimationFrame(updateAllMarquees);
+      setTimeout(updateAllMarquees, 320);
     }
     function Ue() {
       ve && ((ve.value = ""), ve.click());
@@ -1145,13 +1746,14 @@
           file: e,
           addedAt: Date.now(),
           tags: tags,
+          lyrics: (tags && tags.lyrics) ? tags.lyrics : null,
           coverUrl: coverUrl,
         });
       }
       ot(i, o.length ? r.slice(-o.length).map((e) => e.id) : []);
       n > 0
         ? It(
-            `${n} file${n > 1 ? "s" : ""} skipped — only .mp3, .ogg, .wav, .flac accepted.`,
+            `${n} file${n > 1 ? "s" : ""} skipped — only audio files (.mp3, .ogg, .wav, .flac, .m4a, .aac) accepted.`,
             "danger"
           )
         : o.length > 0 &&
@@ -1163,11 +1765,32 @@
     ee && ee.addEventListener("click", () => Oe(!1));
     ke && ke.addEventListener("click", () => Oe(!1));
 
+    lyricsEditToggle &&
+      lyricsEditToggle.addEventListener("click", () => {
+        setLyricsEditMode(!isLyricsEditing);
+      });
+    lyricsSaveBtn && lyricsSaveBtn.addEventListener("click", saveLyrics);
+    lyricsModal &&
+      lyricsModal.addEventListener("click", (e) => {
+        if (
+          e.target.matches("[data-close]") ||
+          e.target.closest("[data-close]") ||
+          e.target.classList.contains("modal-backdrop")
+        ) {
+          closeLyricsModal();
+        }
+      });
+
     document.addEventListener("keydown", (e) => {
-      "Escape" === e.key &&
-        (ye && ye.classList.contains("open")
+      if ("Escape" === e.key) {
+        if (lyricsModal && lyricsModal.classList.contains("open")) {
+          closeLyricsModal();
+          return;
+        }
+        ye && ye.classList.contains("open")
           ? Bt()
-          : J && J.classList.contains("open") && Oe(!1));
+          : J && J.classList.contains("open") && Oe(!1);
+      }
       const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
       if (
         (e.key === " " || e.key === "k" || e.key === "K") &&
@@ -1297,6 +1920,7 @@
           "grabbing" === document.body.getAttribute("data-cursor") &&
             document.body.removeAttribute("data-cursor"));
       }
+      requestAnimationFrame(updateAllMarquees);
     }
 
     if (
@@ -1770,14 +2394,8 @@
                 isAnimating = false;
                 headerBtn.style.pointerEvents = "";
                 sortControl.style.pointerEvents = "";
-                syncCursor();
-                U(
-                  Array.from(document.querySelectorAll(".sound-card")).map((el) => ({
-                    wrapEl: el.querySelector(".sound-name-wrap"),
-                    innerEl: el.querySelector(".sound-name"),
-                  }))
-                );
                 Qe();
+                updateAllMarquees();
               }, 300);
             } else {
               chevronUp.classList.add("active");
@@ -1802,13 +2420,8 @@
                 headerBtn.style.pointerEvents = "";
                 sortControl.style.pointerEvents = "";
                 syncCursor();
-                U(
-                  Array.from(document.querySelectorAll(".sound-card")).map((el) => ({
-                    wrapEl: el.querySelector(".sound-name-wrap"),
-                    innerEl: el.querySelector(".sound-name"),
-                  }))
-                );
                 Qe();
+                updateAllMarquees();
               }, 300);
             }
           });
@@ -1825,15 +2438,8 @@
         te.innerHTML = "";
         te.appendChild(o);
         requestAnimationFrame(() => {
-          const e = [];
-          t(".sound-card", te).forEach((t) => {
-            e.push({
-              wrapEl: t.querySelector(".sound-name-wrap"),
-              innerEl: t.querySelector(".sound-name"),
-            });
-          });
-          U(e);
           Qe();
+          updateAllMarquees();
         });
       }
       if (K) {
@@ -2757,6 +3363,14 @@
           val: tagData.year || "N/A",
           help: "The year the recording was released or created.",
         },
+        {
+          label: "Lyrics",
+          icon: iconLyrics,
+          val: (t.lyrics && t.lyrics.trim()) ? t.lyrics.trim().replace(/\r?\n+/g, " ") : "N/A",
+          copyVal: (t.lyrics && t.lyrics.trim()) ? t.lyrics.trim() : "N/A",
+          help: "Embedded lyrics or text transcription for this audio track.",
+          hasEdit: true,
+        },
       ];
 
       if ("loading" === t.advMeta)
@@ -2908,7 +3522,7 @@
       $e.innerHTML = c
         .map(
           (e) => `
-        <div class="info-row">
+        <div class="info-row${e.hasEdit ? " has-edit" : ""}">
           <span class="info-label">${e.icon} <span class="info-sep"></span> <span>${e.label}</span></span>
           <div class="info-val-wrap">
             <span class="info-val">${O(e.val)}</span>
@@ -2921,7 +3535,17 @@
             </svg>
           </button>
           <div class="info-tooltip">${e.help}</div>
-          <button class="info-copy-btn" data-copy="${O(e.val)}" aria-label="Copy ${e.label}">
+          ${
+            e.hasEdit
+              ? `
+          <button class="info-edit-btn" data-lyrics-open="${t.id}" aria-label="Edit ${e.label}" data-tip="Lyrics">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </button>`
+              : ""
+          }
+          <button class="info-copy-btn" data-copy="${O(e.copyVal || e.val)}" aria-label="Copy ${e.label}">
             <span class="icon-copy">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -3015,6 +3639,15 @@
           document
             .querySelectorAll(".info-help-btn.active")
             .forEach((e) => e.classList.remove("active"));
+        }
+
+        const editBtn = e.target.closest(".info-edit-btn");
+        if (editBtn) {
+          const trackId = parseInt(editBtn.dataset.lyricsOpen, 10);
+          Ae.classList.remove("open");
+          Ae.setAttribute("aria-hidden", "true");
+          openLyricsModal(trackId);
+          return;
         }
 
         const n = e.target.closest(".info-copy-btn");
@@ -3123,20 +3756,41 @@
       clearTimeout(Yt);
       Yt = setTimeout(() => {
         requestAnimationFrame(() => {
-          if (te) {
-            const e = [];
-            t(".sound-card", te).forEach((t) => {
-              e.push({
-                wrapEl: t.querySelector(".sound-name-wrap"),
-                innerEl: t.querySelector(".sound-name"),
-              });
-            });
-            U(e);
-          }
-          W(ze, De);
+          Qe();
+          updateAllMarquees();
         });
       }, 150);
     });
+
+    if (typeof ResizeObserver !== "undefined") {
+      let roTimeout;
+      const ro = new ResizeObserver(() => {
+        clearTimeout(roTimeout);
+        roTimeout = setTimeout(() => {
+          requestAnimationFrame(updateAllMarquees);
+        }, 50);
+      });
+      if (te) ro.observe(te);
+      if (ze) ro.observe(ze);
+      if (Ge) ro.observe(Ge);
+    }
+    if (te) {
+      te.addEventListener("transitionend", (e) => {
+        if (e.propertyName === "padding-right") {
+          updateAllMarquees();
+        }
+      });
+    }
+    if (Ge) {
+      Ge.addEventListener("mouseenter", () => {
+        requestAnimationFrame(updateAllMarquees);
+        setTimeout(updateAllMarquees, 260);
+      });
+      Ge.addEventListener("mouseleave", () => {
+        requestAnimationFrame(updateAllMarquees);
+        setTimeout(updateAllMarquees, 260);
+      });
+    }
 
     let lastCursorClientX = 0,
       lastCursorClientY = 0;
@@ -3150,7 +3804,7 @@
     );
 
     const CURSOR_POINTER_SELECTOR =
-      "button, a, [data-tip], .pc-btn, .sound-action, .sound-delete, .custom-scrollbar-thumb, .sound-thumb, .rail-sound, .pp-track, .pp-thumb, .pp-time, .pp-times, .pp-thumb-label";
+      "button, a, [data-tip], .pc-btn, .sound-action, .sound-delete, .custom-scrollbar-thumb, .sound-thumb, .rail-sound, .pp-track, .pp-thumb, .pp-time, .pp-times, .pp-thumb-label, .info-edit-btn, .lyrics-edit-toggle";
     function applyCursorForTarget(t) {
       if ("grabbing" === document.body.getAttribute("data-cursor")) return;
       if (!t) return void document.body.removeAttribute("data-cursor");

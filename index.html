@@ -576,6 +576,95 @@
         </div>
       </div>
     </div>
+    <div class="modal" id="lyricsModal" aria-hidden="true">
+      <div class="modal-backdrop" data-close></div>
+      <div
+        class="modal-card lyrics-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lyricsTitle"
+      >
+        <div class="modal-glow"></div>
+        <div class="modal-header">
+          <h3 id="lyricsTitle">
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              style="color: var(--text-mute); display: block;"
+            >
+              <path d="M4 6h16" />
+              <path d="M4 12h10" />
+              <path d="M4 18h7" />
+              <path d="M18 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0V8l4-1" />
+            </svg>
+            <span class="modal-title-sep"></span> <span>Lyrics</span>
+          </h3>
+          <div class="lyrics-header-actions">
+            <button class="modal-icon-btn lyrics-edit-toggle" id="lyricsEditToggle" aria-label="Edit Lyrics" data-tip="Edit Lyrics">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </button>
+            <button class="modal-close-btn" data-close aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="lyrics-body modal-body" id="lyricsBody">
+          <div class="lyrics-view" id="lyricsView">
+            <div class="lyrics-text" id="lyricsText"></div>
+            <div class="lyrics-empty" id="lyricsEmpty">
+              <div class="lyrics-empty-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="26"
+                  height="26"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 6h16" />
+                  <path d="M4 12h10" />
+                  <path d="M4 18h7" />
+                  <path d="M18 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0V8l4-1" />
+                </svg>
+              </div>
+              <span>No Lyrics</span>
+            </div>
+          </div>
+          <div class="lyrics-edit-pane" id="lyricsEditPane" style="display: none;">
+            <textarea class="lyrics-textarea" id="lyricsTextarea" placeholder="Enter lyrics here..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions" id="lyricsActions">
+          <button class="btn ghost" data-close id="lyricsCloseBtn">Close</button>
+          <button class="btn primary" id="lyricsSaveBtn" style="display: none;">Save</button>
+        </div>
+      </div>
+    </div>
     <div
       class="toast-container"
       id="toastContainer"
@@ -588,7 +677,7 @@
     <input
       type="file"
       id="fileInput"
-      accept=".mp3,.ogg,.wav,.flac,audio/mpeg,audio/ogg,audio/wav,audio/x-wav,audio/flac,audio/x-flac"
+      accept=".mp3,.ogg,.wav,.flac,.m4a,.aac,.mp4,audio/mpeg,audio/ogg,audio/wav,audio/x-wav,audio/flac,audio/x-flac,audio/mp4,audio/m4a,audio/x-m4a,audio/aac,audio/*"
       multiple="multiple"
       hidden
     />
