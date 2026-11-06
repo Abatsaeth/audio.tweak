@@ -1301,7 +1301,67 @@
       Ye = null,
       isPinnedCollapsed = false,
       lyricsTrackId = null,
-      isLyricsEditing = false;
+      isLyricsEditing = false,
+      isLyricsBusy = false,
+      lyricsAnimTimer = null,
+      isTrackInfoBusy = false,
+      trackInfoAnimTimer = null,
+      isSidebarAnimating = false,
+      sidebarAnimTimer = null;
+
+    function openTrackInfoModal(trackId) {
+      if (isTrackInfoBusy) return;
+      const sound = r.find((s) => s.id === trackId);
+      if (!sound) return;
+
+      isTrackInfoBusy = true;
+      jt(trackId);
+
+      let animDone = false;
+      let loadDone = sound.advMeta !== "loading";
+
+      function checkReady() {
+        if (animDone && loadDone) {
+          isTrackInfoBusy = false;
+        }
+      }
+
+      clearTimeout(trackInfoAnimTimer);
+      trackInfoAnimTimer = setTimeout(() => {
+        animDone = true;
+        checkReady();
+      }, 340);
+
+      if (!loadDone) {
+        const interval = setInterval(() => {
+          if (!Ae || !Ae.classList.contains("open")) {
+            clearInterval(interval);
+            isTrackInfoBusy = false;
+            return;
+          }
+          if (sound.advMeta !== "loading") {
+            clearInterval(interval);
+            loadDone = true;
+            checkReady();
+          }
+        }, 50);
+      }
+    }
+
+    function closeTrackInfoModal() {
+      if (Ae && Ae.classList.contains("open")) {
+        isTrackInfoBusy = true;
+        Ae.classList.remove("open");
+        Ae.setAttribute("aria-hidden", "true");
+        if (infoSearchInput) infoSearchInput.value = "";
+        if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
+        filterInfoCards("", false);
+        clearTimeout(trackInfoAnimTimer);
+        trackInfoAnimTimer = setTimeout(() => {
+          isTrackInfoBusy = false;
+        }, 340);
+      }
+    }
 
     function highlightInfoMatches(text, query) {
       if (!query || !text) return O(text);
@@ -1319,8 +1379,10 @@
     }
 
     function openLyricsModal(trackId, startEditing = false) {
+      if (isLyricsBusy) return;
       const sound = r.find((s) => s.id === trackId);
       if (!sound) return;
+      isLyricsBusy = true;
       lyricsTrackId = trackId;
       if (lyricsSearchInput) lyricsSearchInput.value = "";
       if (lyricsSearchWrap) lyricsSearchWrap.classList.remove("has-text", "is-focused");
@@ -1332,10 +1394,15 @@
           lyricsModal.classList.add("open");
         });
       }
+      clearTimeout(lyricsAnimTimer);
+      lyricsAnimTimer = setTimeout(() => {
+        isLyricsBusy = false;
+      }, 340);
     }
 
     function closeLyricsModal() {
       if (lyricsModal && lyricsModal.classList.contains("open")) {
+        isLyricsBusy = true;
         lyricsModal.classList.remove("open");
         lyricsModal.setAttribute("aria-hidden", "true");
         if (lyricsSearchInput) lyricsSearchInput.value = "";
@@ -1343,6 +1410,10 @@
         filterLyrics("");
         setLyricsEditMode(false);
         lyricsTrackId = null;
+        clearTimeout(lyricsAnimTimer);
+        lyricsAnimTimer = setTimeout(() => {
+          isLyricsBusy = false;
+        }, 340);
       }
     }
 
@@ -1437,7 +1508,6 @@
     function setLyricsEditMode(editing) {
       isLyricsEditing = !!editing;
       if (isLyricsEditing) {
-        if (lyricsSearchWrap) lyricsSearchWrap.style.display = "none";
         if (lyricsView) lyricsView.style.display = "none";
         if (lyricsEditPane) lyricsEditPane.style.display = "flex";
         if (lyricsSaveBtn) lyricsSaveBtn.style.display = "inline-flex";
@@ -1445,7 +1515,6 @@
         lyricsEditToggle && lyricsEditToggle.classList.add("active");
         setTimeout(() => lyricsTextarea && lyricsTextarea.focus(), 50);
       } else {
-        if (lyricsSearchWrap) lyricsSearchWrap.style.display = "flex";
         if (lyricsView) lyricsView.style.display = "block";
         if (lyricsEditPane) lyricsEditPane.style.display = "none";
         if (lyricsSaveBtn) lyricsSaveBtn.style.display = "none";
@@ -1719,7 +1788,7 @@
         ),
         v?.addEventListener("click", () => Lt()),
         p?.addEventListener("click", () => {
-          i && jt(i);
+          i && openTrackInfoModal(i);
         }),
         pcLyrics?.addEventListener("click", () => {
           if (i) {
@@ -1741,7 +1810,9 @@
           }
         }),
         w?.addEventListener("click", () => {
-          const hasMultiple = b().length > 1;
+          const sounds = b();
+          if (sounds.length === 0) return;
+          const hasMultiple = sounds.length > 1;
           if (!hasMultiple) {
             if (c) j(false);
             H(d === 2 ? 0 : 2);
@@ -1773,7 +1844,7 @@
         window.addEventListener("mouseup", Y),
         window.addEventListener("touchend", Y),
         B(!1),
-        { root: e, update: q, setPlayState: B, updateShuffleAvailability }
+        { root: e, update: q, setPlayState: B, updateShuffleAvailability, prevBtn: g, nextBtn: v, repeatBtn: w }
       );
     })();
 
@@ -1794,13 +1865,25 @@
     }
 
     function Oe(e) {
-      J && J.classList.toggle("open", e);
-      ke && ke.classList.toggle("show", e);
-      be && be.classList.toggle("show", e);
-      Ne && Ne.root && Ne.root.classList.toggle("shifted", e);
-      Fe && Fe.classList.toggle("shifted", e);
+      const shouldOpen = Boolean(e);
+      const isCurrentOpen = Boolean(J && J.classList.contains("open"));
+      if (isCurrentOpen === shouldOpen && !isSidebarAnimating) return;
+
+      isSidebarAnimating = true;
+      clearTimeout(sidebarAnimTimer);
+
+      J && J.classList.toggle("open", shouldOpen);
+      ke && ke.classList.toggle("show", shouldOpen);
+      be && be.classList.toggle("show", shouldOpen);
+      Ne && Ne.root && Ne.root.classList.toggle("shifted", shouldOpen);
+      Fe && Fe.classList.toggle("shifted", shouldOpen);
       requestAnimationFrame(updateAllMarquees);
       setTimeout(updateAllMarquees, 320);
+
+      sidebarAnimTimer = setTimeout(() => {
+        isSidebarAnimating = false;
+        updateAllMarquees();
+      }, 440);
     }
     function Ue() {
       ve && ((ve.value = ""), ve.click());
@@ -1865,11 +1948,39 @@
 
     lyricsEditToggle &&
       lyricsEditToggle.addEventListener("click", () => {
-        setLyricsEditMode(!isLyricsEditing);
+        if (isLyricsEditing) {
+          const sound = r.find((s) => s.id === lyricsTrackId);
+          if (lyricsTextarea) {
+            lyricsTextarea.value = sound && sound.lyrics ? sound.lyrics : "";
+          }
+          setLyricsEditMode(false);
+        } else {
+          setLyricsEditMode(true);
+        }
       });
     lyricsSaveBtn && lyricsSaveBtn.addEventListener("click", saveLyrics);
+    lyricsCloseBtn &&
+      lyricsCloseBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (isLyricsEditing) {
+          const sound = r.find((s) => s.id === lyricsTrackId);
+          if (lyricsTextarea) {
+            lyricsTextarea.value = sound && sound.lyrics ? sound.lyrics : "";
+          }
+          setLyricsEditMode(false);
+        } else {
+          closeLyricsModal();
+        }
+      });
     lyricsModal &&
       lyricsModal.addEventListener("click", (e) => {
+        if (
+          e.target.closest("#lyricsCloseBtn") ||
+          e.target.closest("#lyricsSaveBtn") ||
+          e.target.closest("#lyricsEditToggle")
+        ) {
+          return;
+        }
         if (
           e.target.matches("[data-close]") ||
           e.target.closest("[data-close]") ||
@@ -1880,24 +1991,89 @@
       });
 
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Pause" || e.code === "Pause" || e.keyCode === 19) {
+        e.preventDefault();
+        if (u && !u.paused && l) {
+          yt();
+        }
+        return;
+      }
       if ("Escape" === e.key) {
         if (lyricsModal && lyricsModal.classList.contains("open")) {
           closeLyricsModal();
           return;
         }
         if (Ae && Ae.classList.contains("open")) {
-          Ae.classList.remove("open");
-          Ae.setAttribute("aria-hidden", "true");
-          if (infoSearchInput) infoSearchInput.value = "";
-          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
-          filterInfoCards("", false);
+          closeTrackInfoModal();
           return;
         }
-        ye && ye.classList.contains("open")
-          ? Bt()
-          : J && J.classList.contains("open") && Oe(!1);
+        if (ye && ye.classList.contains("open")) {
+          Bt();
+          return;
+        }
+        if (!isSidebarAnimating) {
+          if (J && J.classList.contains("open")) {
+            Oe(false);
+          } else {
+            Oe(true);
+          }
+        }
+        return;
       }
-      const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
+      const isInput = e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable;
+      if (!isInput && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const isTrackLoaded = Boolean(i && document.body.classList.contains("has-player") && r.some((s) => s.id === i));
+
+        if (e.key === "I" || e.key === "i" || e.code === "KeyI") {
+          e.preventDefault();
+          if (isTrackLoaded && !isTrackInfoBusy) {
+            if (Ae && Ae.classList.contains("open")) {
+              closeTrackInfoModal();
+            } else {
+              if (lyricsModal && lyricsModal.classList.contains("open")) {
+                closeLyricsModal();
+              }
+              openTrackInfoModal(i);
+            }
+          }
+          return;
+        }
+        if (e.key === "L" || e.key === "l" || e.code === "KeyL") {
+          e.preventDefault();
+          if (isTrackLoaded && !isLyricsBusy) {
+            if (lyricsModal && lyricsModal.classList.contains("open")) {
+              closeLyricsModal();
+            } else {
+              if (Ae && Ae.classList.contains("open")) {
+                closeTrackInfoModal();
+              }
+              openLyricsModal(i);
+            }
+          }
+          return;
+        }
+        if (e.key === "P" || e.key === "p" || e.code === "KeyP") {
+          e.preventDefault();
+          if (Ne && Ne.prevBtn) {
+            Ne.prevBtn.click();
+          }
+          return;
+        }
+        if (e.key === "N" || e.key === "n" || e.code === "KeyN") {
+          e.preventDefault();
+          if (Ne && Ne.nextBtn) {
+            Ne.nextBtn.click();
+          }
+          return;
+        }
+        if (e.key === "R" || e.key === "r" || e.code === "KeyR") {
+          e.preventDefault();
+          if (Ne && Ne.repeatBtn) {
+            Ne.repeatBtn.click();
+          }
+          return;
+        }
+      }
       if (
         (e.key === " " || e.key === "k" || e.key === "K") &&
         document.body.classList.contains("has-player") &&
@@ -1981,9 +2157,7 @@
             infoSearchWrap.classList.remove("has-text");
             filterInfoCards("", true);
           } else if (Ae) {
-            Ae.classList.remove("open");
-            Ae.setAttribute("aria-hidden", "true");
-            filterInfoCards("", false);
+            closeTrackInfoModal();
           }
         }
       });
@@ -3947,11 +4121,7 @@
     Ae &&
       Ae.addEventListener("click", async (e) => {
         if (e.target.matches("[data-close]") && Ae && Ae.classList.contains("open")) {
-          Ae.classList.remove("open");
-          Ae.setAttribute("aria-hidden", "true");
-          if (infoSearchInput) infoSearchInput.value = "";
-          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
-          filterInfoCards("", false);
+          closeTrackInfoModal();
         }
 
         const t = e.target.closest(".info-help-btn");
@@ -3979,11 +4149,7 @@
         const editBtn = e.target.closest(".info-edit-btn");
         if (editBtn) {
           const trackId = parseInt(editBtn.dataset.lyricsOpen, 10);
-          Ae.classList.remove("open");
-          Ae.setAttribute("aria-hidden", "true");
-          if (infoSearchInput) infoSearchInput.value = "";
-          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
-          filterInfoCards("", false);
+          closeTrackInfoModal();
           openLyricsModal(trackId);
           return;
         }
