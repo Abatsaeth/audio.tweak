@@ -1271,6 +1271,9 @@
       $e = e("#infoContent"),
       qe = e("#infoScrollbar"),
       Be = e("#infoScrollbarThumb"),
+      infoSearchWrap = e("#infoSearchWrap"),
+      infoSearchInput = e("#infoSearchInput"),
+      infoSearchClear = e("#infoSearchClear"),
       Fe = e("#topbar"),
       je = Fe ? Fe.querySelector(".topbar-inner") : null,
       ze = e("#topbarName"),
@@ -1282,6 +1285,9 @@
       topbarCoverSep = e("#topbarCoverSep"),
       lyricsModal = e("#lyricsModal"),
       lyricsTitle = e("#lyricsTitle"),
+      lyricsSearchWrap = e("#lyricsSearchWrap"),
+      lyricsSearchInput = e("#lyricsSearchInput"),
+      lyricsSearchClear = e("#lyricsSearchClear"),
       lyricsBody = e("#lyricsBody"),
       lyricsView = e("#lyricsView"),
       lyricsText = e("#lyricsText"),
@@ -1297,10 +1303,27 @@
       lyricsTrackId = null,
       isLyricsEditing = false;
 
+    function highlightInfoMatches(text, query) {
+      if (!query || !text) return O(text);
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(${escaped})`, "gi");
+      const parts = String(text).split(regex);
+      return parts
+        .map((part) => {
+          if (part.toLowerCase() === query.toLowerCase()) {
+            return `<mark class="info-highlight">${O(part)}</mark>`;
+          }
+          return O(part);
+        })
+        .join("");
+    }
+
     function openLyricsModal(trackId, startEditing = false) {
       const sound = r.find((s) => s.id === trackId);
       if (!sound) return;
       lyricsTrackId = trackId;
+      if (lyricsSearchInput) lyricsSearchInput.value = "";
+      if (lyricsSearchWrap) lyricsSearchWrap.classList.remove("has-text", "is-focused");
       setLyricsEditMode(startEditing);
       updateLyricsDisplay(sound);
       if (lyricsModal) {
@@ -1315,6 +1338,9 @@
       if (lyricsModal && lyricsModal.classList.contains("open")) {
         lyricsModal.classList.remove("open");
         lyricsModal.setAttribute("aria-hidden", "true");
+        if (lyricsSearchInput) lyricsSearchInput.value = "";
+        if (lyricsSearchWrap) lyricsSearchWrap.classList.remove("has-text", "is-focused");
+        filterLyrics("");
         setLyricsEditMode(false);
         lyricsTrackId = null;
       }
@@ -1322,13 +1348,42 @@
 
     function updateLyricsDisplay(sound) {
       const hasLyrics = !!(sound && sound.lyrics && sound.lyrics.trim());
+      if (lyricsSearchInput) {
+        lyricsSearchInput.value = "";
+      }
+      if (lyricsSearchWrap) {
+        lyricsSearchWrap.classList.remove("has-text", "is-focused");
+      }
       if (lyricsText && lyricsEmpty) {
         if (hasLyrics) {
-          lyricsText.textContent = sound.lyrics.trim();
+          const lines = sound.lyrics.trim().split("\n");
+          lyricsText.innerHTML =
+            lines
+              .map((line) => {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                  return `<div class="lyrics-line lyrics-line-blank" data-raw-text="">&nbsp;</div>`;
+                }
+                return `<div class="lyrics-line" data-raw-text="${O(line)}">${O(line)}</div>`;
+              })
+              .join("") +
+            `
+            <div class="lyrics-search-empty" id="lyricsSearchEmpty" style="display: none;">
+              <div class="search-empty-icon">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  <line x1="8" y1="8" x2="14" y2="14" />
+                </svg>
+              </div>
+              <div class="search-empty-title">No matching lyrics found</div>
+              <div class="search-empty-sub">Try searching for another word</div>
+            </div>
+          `;
           lyricsText.style.display = "block";
           lyricsEmpty.style.display = "none";
         } else {
-          lyricsText.textContent = "";
+          lyricsText.innerHTML = "";
           lyricsText.style.display = "none";
           lyricsEmpty.style.display = "flex";
         }
@@ -1338,9 +1393,51 @@
       }
     }
 
+    function filterLyrics(query) {
+      if (!lyricsText) return;
+      const lines = Array.from(lyricsText.querySelectorAll(".lyrics-line"));
+      const emptyEl = lyricsText.querySelector("#lyricsSearchEmpty");
+      if (!lines.length) return;
+
+      const q = (query || "").trim().toLowerCase();
+      let matchCount = 0;
+
+      for (const line of lines) {
+        const raw = line.dataset.rawText || "";
+        const isBlank = line.classList.contains("lyrics-line-blank");
+
+        if (!q) {
+          line.classList.remove("is-hidden");
+          if (!isBlank) {
+            line.textContent = raw;
+          }
+          matchCount++;
+        } else {
+          if (isBlank) {
+            line.classList.add("is-hidden");
+          } else {
+            const matches = raw.toLowerCase().includes(q);
+            if (matches) {
+              matchCount++;
+              line.classList.remove("is-hidden");
+              line.innerHTML = highlightInfoMatches(raw, q);
+            } else {
+              line.classList.add("is-hidden");
+              line.textContent = raw;
+            }
+          }
+        }
+      }
+
+      if (emptyEl) {
+        emptyEl.style.display = matchCount === 0 && q ? "flex" : "none";
+      }
+    }
+
     function setLyricsEditMode(editing) {
       isLyricsEditing = !!editing;
       if (isLyricsEditing) {
+        if (lyricsSearchWrap) lyricsSearchWrap.style.display = "none";
         if (lyricsView) lyricsView.style.display = "none";
         if (lyricsEditPane) lyricsEditPane.style.display = "flex";
         if (lyricsSaveBtn) lyricsSaveBtn.style.display = "inline-flex";
@@ -1348,6 +1445,7 @@
         lyricsEditToggle && lyricsEditToggle.classList.add("active");
         setTimeout(() => lyricsTextarea && lyricsTextarea.focus(), 50);
       } else {
+        if (lyricsSearchWrap) lyricsSearchWrap.style.display = "flex";
         if (lyricsView) lyricsView.style.display = "block";
         if (lyricsEditPane) lyricsEditPane.style.display = "none";
         if (lyricsSaveBtn) lyricsSaveBtn.style.display = "none";
@@ -1787,6 +1885,14 @@
           closeLyricsModal();
           return;
         }
+        if (Ae && Ae.classList.contains("open")) {
+          Ae.classList.remove("open");
+          Ae.setAttribute("aria-hidden", "true");
+          if (infoSearchInput) infoSearchInput.value = "";
+          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
+          filterInfoCards("", false);
+          return;
+        }
         ye && ye.classList.contains("open")
           ? Bt()
           : J && J.classList.contains("open") && Oe(!1);
@@ -1842,6 +1948,116 @@
         pe.classList.remove("is-focused");
         he.value ? pe.classList.add("has-text") : pe.classList.remove("has-text");
       }));
+
+    if (infoSearchWrap && infoSearchInput) {
+      infoSearchInput.addEventListener("input", () => {
+        const hasText = Boolean(infoSearchInput.value);
+        if (hasText) {
+          infoSearchWrap.classList.add("has-text");
+        } else {
+          infoSearchWrap.classList.remove("has-text");
+        }
+        filterInfoCards(infoSearchInput.value, true);
+      });
+
+      infoSearchInput.addEventListener("focus", () => {
+        infoSearchWrap.classList.add("is-focused");
+      });
+
+      infoSearchInput.addEventListener("blur", () => {
+        infoSearchWrap.classList.remove("is-focused");
+        if (infoSearchInput.value) {
+          infoSearchWrap.classList.add("has-text");
+        } else {
+          infoSearchWrap.classList.remove("has-text");
+        }
+      });
+
+      infoSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          if (infoSearchInput.value) {
+            infoSearchInput.value = "";
+            infoSearchWrap.classList.remove("has-text");
+            filterInfoCards("", true);
+          } else if (Ae) {
+            Ae.classList.remove("open");
+            Ae.setAttribute("aria-hidden", "true");
+            filterInfoCards("", false);
+          }
+        }
+      });
+    }
+
+    if (infoSearchClear && infoSearchInput) {
+      infoSearchClear.addEventListener("click", () => {
+        infoSearchInput.value = "";
+        infoSearchWrap.classList.remove("has-text");
+        infoSearchInput.focus();
+        filterInfoCards("", true);
+      });
+    }
+
+    if (lyricsSearchWrap && lyricsSearchInput) {
+      lyricsSearchInput.addEventListener("input", () => {
+        const hasText = Boolean(lyricsSearchInput.value);
+        if (hasText) {
+          lyricsSearchWrap.classList.add("has-text");
+        } else {
+          lyricsSearchWrap.classList.remove("has-text");
+        }
+        filterLyrics(lyricsSearchInput.value);
+      });
+
+      lyricsSearchInput.addEventListener("focus", () => {
+        lyricsSearchWrap.classList.add("is-focused");
+      });
+
+      lyricsSearchInput.addEventListener("blur", () => {
+        lyricsSearchWrap.classList.remove("is-focused");
+        if (lyricsSearchInput.value) {
+          lyricsSearchWrap.classList.add("has-text");
+        } else {
+          lyricsSearchWrap.classList.remove("has-text");
+        }
+      });
+
+      lyricsSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          if (lyricsSearchInput.value) {
+            lyricsSearchInput.value = "";
+            lyricsSearchWrap.classList.remove("has-text");
+            filterLyrics("");
+          } else {
+            closeLyricsModal();
+          }
+        }
+      });
+    }
+
+    if (lyricsSearchClear && lyricsSearchInput) {
+      lyricsSearchClear.addEventListener("click", () => {
+        lyricsSearchInput.value = "";
+        lyricsSearchWrap.classList.remove("has-text");
+        lyricsSearchInput.focus();
+        filterLyrics("");
+      });
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        if (lyricsModal && lyricsModal.classList.contains("open") && lyricsSearchInput) {
+          e.preventDefault();
+          lyricsSearchInput.focus();
+          lyricsSearchInput.select();
+        } else if (Ae && Ae.classList.contains("open") && infoSearchInput) {
+          e.preventDefault();
+          infoSearchInput.focus();
+          infoSearchInput.select();
+        }
+      }
+    });
 
     me && me.addEventListener("click", Ue);
     Z && Z.addEventListener("click", Ue);
@@ -3103,10 +3319,108 @@
     }
 
     let Ft = null;
+    function filterInfoCards(query, animate = true) {
+      if (!$e) return;
+      const rows = Array.from($e.querySelectorAll(".info-row"));
+      const emptyEl = $e.querySelector("#infoSearchEmpty");
+      if (!rows.length) return;
+
+      const q = (query || "").trim().toLowerCase();
+
+      const firstRects = new Map();
+      if (animate) {
+        for (const row of rows) {
+          if (!row.classList.contains("is-hidden")) {
+            firstRects.set(row, row.getBoundingClientRect());
+          }
+        }
+      }
+
+      let matchCount = 0;
+      for (const row of rows) {
+        const rawLabel = row.dataset.rawLabel || "";
+        const rawVal = row.dataset.rawVal || "";
+        const rawHelp = row.dataset.rawHelp || "";
+        const labelSpan = row.querySelector(".info-label-text");
+        const valSpan = row.querySelector(".info-val");
+        const tipSpan = row.querySelector(".info-tooltip");
+
+        if (!q) {
+          matchCount++;
+          row.classList.remove("is-hidden");
+          if (labelSpan) labelSpan.textContent = rawLabel;
+          if (valSpan) valSpan.textContent = rawVal;
+          if (tipSpan) tipSpan.textContent = rawHelp;
+        } else {
+          const isMatch =
+            rawLabel.toLowerCase().includes(q) ||
+            rawVal.toLowerCase().includes(q) ||
+            rawHelp.toLowerCase().includes(q);
+
+          if (isMatch) {
+            matchCount++;
+            row.classList.remove("is-hidden");
+            if (labelSpan) labelSpan.innerHTML = highlightInfoMatches(rawLabel, q);
+            if (valSpan) valSpan.innerHTML = highlightInfoMatches(rawVal, q);
+            if (tipSpan) tipSpan.innerHTML = highlightInfoMatches(rawHelp, q);
+          } else {
+            row.classList.add("is-hidden");
+            if (labelSpan) labelSpan.textContent = rawLabel;
+            if (valSpan) valSpan.textContent = rawVal;
+            if (tipSpan) tipSpan.textContent = rawHelp;
+          }
+        }
+      }
+
+      if (emptyEl) {
+        emptyEl.style.display = matchCount === 0 && q ? "flex" : "none";
+      }
+
+      if (animate) {
+        const visibleRows = rows.filter((r) => !r.classList.contains("is-hidden"));
+        for (const row of visibleRows) {
+          const lastRect = row.getBoundingClientRect();
+          const firstRect = firstRects.get(row);
+          if (firstRect) {
+            const dx = firstRect.left - lastRect.left;
+            const dy = firstRect.top - lastRect.top;
+            if (dx !== 0 || dy !== 0) {
+              row.style.transform = `translate(${dx}px, ${dy}px)`;
+              row.style.transition = "none";
+            }
+          } else {
+            row.style.opacity = "0";
+            row.style.transform = "scale(0.94)";
+            row.style.transition = "none";
+          }
+        }
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            for (const row of visibleRows) {
+              row.style.transition =
+                "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+              row.style.transform = "";
+              row.style.opacity = "1";
+            }
+          });
+        });
+      }
+
+      const wraps = Array.from($e.querySelectorAll(".info-val-wrap"));
+      const vals = Array.from($e.querySelectorAll(".info-val"));
+      U(wraps.map((w, idx) => ({ wrapEl: w, innerEl: vals[idx] })));
+      requestAnimationFrame(nt);
+    }
+
     function jt(e) {
       if (!Ae || !$e) return;
       const t = r.find((t) => t.id === e);
       if (!t) return;
+      if (Ft !== e) {
+        if (infoSearchInput) infoSearchInput.value = "";
+        if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
+      }
       Ft = e;
 
       if (!t.advMeta && t.file) {
@@ -3519,11 +3833,12 @@
         });
       }
 
-      $e.innerHTML = c
-        .map(
-          (e) => `
-        <div class="info-row${e.hasEdit ? " has-edit" : ""}">
-          <span class="info-label">${e.icon} <span class="info-sep"></span> <span>${e.label}</span></span>
+      $e.innerHTML =
+        c
+          .map(
+            (e) => `
+        <div class="info-row${e.hasEdit ? " has-edit" : ""}" data-raw-label="${O(e.label)}" data-raw-val="${O(e.val)}" data-raw-help="${O(e.help || "")}">
+          <span class="info-label">${e.icon} <span class="info-sep"></span> <span class="info-label-text">${O(e.label)}</span></span>
           <div class="info-val-wrap">
             <span class="info-val">${O(e.val)}</span>
           </div>
@@ -3560,8 +3875,25 @@
           </button>
         </div>
       `
-        )
-        .join("");
+          )
+          .join("") +
+        `
+        <div class="info-search-empty" id="infoSearchEmpty">
+          <div class="search-empty-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="8" y1="8" x2="14" y2="14" />
+            </svg>
+          </div>
+          <div class="search-empty-title">No matching track info</div>
+          <div class="search-empty-sub">Try searching for another term</div>
+        </div>
+      `;
+
+      if (infoSearchInput && infoSearchInput.value.trim()) {
+        filterInfoCards(infoSearchInput.value, false);
+      }
 
       Ae.setAttribute("aria-hidden", "false");
       requestAnimationFrame(() => {
@@ -3614,10 +3946,13 @@
 
     Ae &&
       Ae.addEventListener("click", async (e) => {
-        e.target.matches("[data-close]") &&
-          Ae &&
-          Ae.classList.contains("open") &&
-          (Ae.classList.remove("open"), Ae.setAttribute("aria-hidden", "true"));
+        if (e.target.matches("[data-close]") && Ae && Ae.classList.contains("open")) {
+          Ae.classList.remove("open");
+          Ae.setAttribute("aria-hidden", "true");
+          if (infoSearchInput) infoSearchInput.value = "";
+          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
+          filterInfoCards("", false);
+        }
 
         const t = e.target.closest(".info-help-btn");
         if (t) {
@@ -3646,6 +3981,9 @@
           const trackId = parseInt(editBtn.dataset.lyricsOpen, 10);
           Ae.classList.remove("open");
           Ae.setAttribute("aria-hidden", "true");
+          if (infoSearchInput) infoSearchInput.value = "";
+          if (infoSearchWrap) infoSearchWrap.classList.remove("has-text", "is-focused");
+          filterInfoCards("", false);
           openLyricsModal(trackId);
           return;
         }

@@ -2795,6 +2795,128 @@ body.has-player .brand {
 #infoModal .modal-card {
   width: min(800px, 92vw);
 }
+#infoModal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+#infoModal .modal-header h3 {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+#infoModal .info-header-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline-2);
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+#infoModal .info-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 30px;
+  border-radius: 10px;
+  margin-right: 0;
+  cursor: text;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+#infoModal .info-search-wrap:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+#infoModal .info-search-wrap.is-focused {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+#infoModal .info-search-wrap .searchbar-icon {
+  position: absolute;
+  left: 9px;
+  display: flex;
+  align-items: center;
+  color: var(--text-mute);
+  pointer-events: none;
+}
+#infoModal .info-search-wrap .searchbar-sep {
+  position: absolute;
+  left: 29px;
+  width: 1px;
+  height: 14px;
+  background: var(--hairline);
+  pointer-events: none;
+}
+#infoModal .info-search-wrap .searchbar-placeholder {
+  position: absolute;
+  left: 38px;
+  color: var(--text-mute);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  pointer-events: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#infoModal .info-search-wrap .searchbar-input {
+  width: 100%;
+  height: 100%;
+  background: 0 0;
+  border: none;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding-left: 38px;
+  padding-right: 28px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+#infoModal .info-search-wrap.is-focused .searchbar-placeholder,
+#infoModal .info-search-wrap:not(.is-focused).has-text .searchbar-placeholder {
+  opacity: 0;
+}
+.info-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--d-fast) var(--ease-soft),
+    color var(--d-fast) var(--ease-soft),
+    background var(--d-fast) var(--ease-soft),
+    transform var(--d-fast) var(--ease-soft);
+}
+.info-search-wrap.has-text .info-search-clear {
+  opacity: 1;
+  pointer-events: auto;
+}
+.info-search-clear:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.info-search-clear:active {
+  transform: scale(0.92);
+}
+#infoModal .modal-close-btn {
+  margin-right: -4px;
+  flex-shrink: 0;
+}
 .info-content-wrap {
   position: relative;
 }
@@ -2846,6 +2968,59 @@ body.has-player .brand {
   border-radius: 10px;
   position: relative;
   min-height: 80px;
+  will-change: transform, opacity;
+}
+.info-row.is-hidden {
+  display: none !important;
+}
+mark.info-highlight {
+  background: rgba(251, 43, 65, 0.28);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 1px rgba(251, 43, 65, 0.45);
+  font-weight: 600;
+  animation: highlightGlow 0.3s var(--ease-out);
+  display: inline;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+@keyframes highlightGlow {
+  0% {
+    background: rgba(251, 43, 65, 0.7);
+    box-shadow: 0 0 8px rgba(251, 43, 65, 0.75), 0 0 0 1px rgba(251, 43, 65, 0.9);
+  }
+  100% {
+    background: rgba(251, 43, 65, 0.28);
+    box-shadow: 0 0 0 1px rgba(251, 43, 65, 0.45);
+  }
+}
+.info-search-empty {
+  display: none;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--text-mute);
+  animation: fadeIn 0.25s var(--ease-out);
+}
+.info-search-empty .search-empty-icon {
+  margin-bottom: 10px;
+  color: var(--text-mute);
+  opacity: 0.6;
+}
+.info-search-empty .search-empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+.info-search-empty .search-empty-sub {
+  font-size: 12px;
+  color: var(--text-mute);
 }
 .info-help-btn {
   position: absolute;
@@ -3319,7 +3494,7 @@ body.has-player .toast-container {
 /* Lyrics modal */
 #lyricsModal .modal-card,
 .modal-card.lyrics-card {
-  width: min(480px, 92vw);
+  width: min(520px, 92vw);
   height: min(580px, 80vh);
   display: flex;
   flex-direction: column;
@@ -3387,10 +3562,166 @@ body.has-player .toast-container {
   margin-bottom: 2px;
 }
 
+#lyricsModal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+#lyricsModal .modal-header h3 {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+#lyricsModal .lyrics-header-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline-2);
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+#lyricsModal .lyrics-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 30px;
+  border-radius: 10px;
+  margin-right: 0;
+  cursor: text;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    opacity 0.2s;
+}
+#lyricsModal .lyrics-search-wrap:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+#lyricsModal .lyrics-search-wrap.is-focused {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+#lyricsModal .lyrics-search-wrap .searchbar-icon {
+  position: absolute;
+  left: 9px;
+  display: flex;
+  align-items: center;
+  color: var(--text-mute);
+  pointer-events: none;
+}
+#lyricsModal .lyrics-search-wrap .searchbar-sep {
+  position: absolute;
+  left: 29px;
+  width: 1px;
+  height: 14px;
+  background: var(--hairline);
+  pointer-events: none;
+}
+#lyricsModal .lyrics-search-wrap .searchbar-placeholder {
+  position: absolute;
+  left: 38px;
+  color: var(--text-mute);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  pointer-events: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#lyricsModal .lyrics-search-wrap .searchbar-input {
+  width: 100%;
+  height: 100%;
+  background: 0 0;
+  border: none;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding-left: 38px;
+  padding-right: 28px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+#lyricsModal .lyrics-search-wrap.is-focused .searchbar-placeholder,
+#lyricsModal .lyrics-search-wrap:not(.is-focused).has-text .searchbar-placeholder {
+  opacity: 0;
+}
+.lyrics-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--d-fast) var(--ease-soft),
+    color var(--d-fast) var(--ease-soft),
+    background var(--d-fast) var(--ease-soft),
+    transform var(--d-fast) var(--ease-soft);
+}
+.lyrics-search-wrap.has-text .lyrics-search-clear {
+  opacity: 1;
+  pointer-events: auto;
+}
+.lyrics-search-clear:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.lyrics-search-clear:active {
+  transform: scale(0.92);
+}
+.lyrics-line {
+  min-height: 1.5em;
+  transition: opacity var(--d-fast) var(--ease-soft), transform var(--d-fast) var(--ease-soft);
+}
+.lyrics-line.is-hidden {
+  display: none !important;
+}
+.lyrics-line-blank {
+  height: 0.9em;
+}
+.lyrics-search-empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--text-mute);
+  animation: fadeIn 0.25s var(--ease-out);
+}
+.lyrics-search-empty .search-empty-icon {
+  margin-bottom: 10px;
+  color: var(--text-mute);
+  opacity: 0.6;
+}
+.lyrics-search-empty .search-empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+.lyrics-search-empty .search-empty-sub {
+  font-size: 12px;
+  color: var(--text-mute);
+}
 .lyrics-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .modal-icon-btn {
