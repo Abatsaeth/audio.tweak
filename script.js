@@ -1844,7 +1844,7 @@
         window.addEventListener("mouseup", Y),
         window.addEventListener("touchend", Y),
         B(!1),
-        { root: e, update: q, setPlayState: B, updateShuffleAvailability, prevBtn: g, nextBtn: v, repeatBtn: w }
+        { root: e, update: q, setPlayState: B, updateShuffleAvailability, prevBtn: g, nextBtn: v, repeatBtn: w, shuffleBtn: f, stopBtn: F }
       );
     })();
 
@@ -2070,6 +2070,20 @@
           e.preventDefault();
           if (Ne && Ne.repeatBtn) {
             Ne.repeatBtn.click();
+          }
+          return;
+        }
+        if (e.key === "S" || e.key === "s" || e.code === "KeyS") {
+          e.preventDefault();
+          if (Ne && Ne.shuffleBtn) {
+            Ne.shuffleBtn.click();
+          }
+          return;
+        }
+        if (e.key === "F" || e.key === "f" || e.code === "KeyF") {
+          e.preventDefault();
+          if (Ne && Ne.stopBtn) {
+            Ne.stopBtn.click();
           }
           return;
         }
