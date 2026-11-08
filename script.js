@@ -40,7 +40,7 @@
     p = !1,
     h = null,
     m = !1;
-  const g = ["name", "type", "size", "duration"];
+  const g = ["name", "type", "size", "duration", "played"];
   let v = 0,
     f = !0,
     w = "",
@@ -144,7 +144,12 @@
         <path class="repeat-one-path" d="M11 10h1v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`;
 
-  // Icons for requested track metadata: Artist, Album, Comment, Composer, Discnumber, Genre, Track, Year
+  // Icons for requested track metadata: Name, Artist, Album, Comment, Composer, Discnumber, Genre, Track, Year, Lyrics
+  const iconName = `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
   const iconArtist = `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -209,6 +214,12 @@
         <path d="M4 12h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         <path d="M4 18h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         <path d="M18 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0V8l4-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
+  const iconTransition = `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M2 17c3.5 0 4.5-10 10-10s6.5 10 10 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M19 14l3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`;
 
   const H = (e) => {
@@ -1261,6 +1272,13 @@
       ye = e("#editModal"),
       Le = e("#editInput"),
       xe = e("#editSave"),
+      editSearchWrap = e("#editSearchWrap"),
+      editSearchInput = e("#editSearchInput"),
+      editSearchClear = e("#editSearchClear"),
+      editContentWrap = e("#editContentWrap"),
+      editContent = e("#editContent"),
+      editScrollbar = e("#editScrollbar"),
+      editScrollbarThumb = e("#editScrollbarThumb"),
       Ce = e("#contextMenu"),
       Me = e("#contextEdit"),
       Ee = e("#contextInfo"),
@@ -1747,7 +1765,13 @@
         n.classList.add("dragging");
         r.classList.add("dragging");
         const t = R(e);
-        u && (u.currentTime = t);
+        if (u) {
+          if (!isFadingToPause && !isSwitchFading) {
+            cancelFade();
+            u.volume = 1;
+          }
+          u.currentTime = t;
+        }
         e.preventDefault();
       }
 
@@ -1772,18 +1796,56 @@
         }),
         F &&
           F?.addEventListener("click", () => {
-            i && (yt(), u && (retProg(), u.currentTime = 0), (vt = 0), q(0, k));
+            cancelFade();
+            i && (yt(true), u && (retProg(), u.currentTime = 0, u.volume = 1), (vt = 0), q(0, k));
           }),
         g?.addEventListener("click", () =>
           (function () {
             const e = b();
             if (!e.length) return;
             const t = e.findIndex((e) => e.id === i);
-            u && u.currentTime > 3
-              ? (retProg(), (u.currentTime = 0))
-              : t <= 0
-              ? u && (retProg(), (u.currentTime = 0))
-              : xt(e[t - 1].id, !0);
+            const currentTrack = r.find((x) => x.id === i);
+            if (u && u.currentTime > 3) {
+              if (u && !u.paused) {
+                const outProfile = computeAdaptiveFadeProfile(currentTrack, "out", u.currentTime);
+                const inProfile = computeAdaptiveFadeProfile(currentTrack, "in", 0);
+                fadeVolumeTo(
+                  0,
+                  Math.min(150, Math.round(outProfile.duration * 0.7)),
+                  () => {
+                    retProg();
+                    u.currentTime = 0;
+                    bt(i, false, inProfile);
+                  },
+                  outProfile.curveType,
+                  outProfile.exponent
+                );
+              } else {
+                retProg();
+                u && (u.currentTime = 0);
+              }
+            } else if (t <= 0) {
+              if (u && !u.paused) {
+                const outProfile = computeAdaptiveFadeProfile(currentTrack, "out", u.currentTime);
+                const inProfile = computeAdaptiveFadeProfile(currentTrack, "in", 0);
+                fadeVolumeTo(
+                  0,
+                  Math.min(150, Math.round(outProfile.duration * 0.7)),
+                  () => {
+                    retProg();
+                    u.currentTime = 0;
+                    bt(i, false, inProfile);
+                  },
+                  outProfile.curveType,
+                  outProfile.exponent
+                );
+              } else if (u) {
+                retProg();
+                u.currentTime = 0;
+              }
+            } else {
+              xt(e[t - 1].id, !0);
+            }
           })()
         ),
         v?.addEventListener("click", () => Lt()),
@@ -1917,7 +1979,7 @@
           }
         } catch (err) {}
 
-        r.push({
+        const trackObj = {
           id: s++,
           name: Y(e.name) || "Untitled",
           format: (o || "mp3").toUpperCase(),
@@ -1929,7 +1991,10 @@
           tags: tags,
           lyrics: (tags && tags.lyrics) ? tags.lyrics : null,
           coverUrl: coverUrl,
-        });
+          lastPlayed: 0,
+        };
+        r.push(trackObj);
+        analyzeAudioTrack(trackObj);
       }
       ot(i, o.length ? r.slice(-o.length).map((e) => e.id) : []);
       n > 0
@@ -2100,6 +2165,10 @@
         if (/^[0-9]$/.test(e.key)) {
           e.preventDefault();
           retProg();
+          if (!isFadingToPause && !isSwitchFading) {
+            cancelFade();
+            u.volume = 1;
+          }
           u.currentTime = u.duration * (parseInt(e.key, 10) / 10);
         }
       }
@@ -2233,6 +2302,53 @@
       });
     }
 
+    if (editSearchWrap && editSearchInput) {
+      editSearchInput.addEventListener("input", () => {
+        const hasText = Boolean(editSearchInput.value);
+        if (hasText) {
+          editSearchWrap.classList.add("has-text");
+        } else {
+          editSearchWrap.classList.remove("has-text");
+        }
+        filterEditCards(editSearchInput.value, true);
+      });
+
+      editSearchInput.addEventListener("focus", () => {
+        editSearchWrap.classList.add("is-focused");
+      });
+
+      editSearchInput.addEventListener("blur", () => {
+        editSearchWrap.classList.remove("is-focused");
+        if (editSearchInput.value) {
+          editSearchWrap.classList.add("has-text");
+        } else {
+          editSearchWrap.classList.remove("has-text");
+        }
+      });
+
+      editSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          if (editSearchInput.value) {
+            editSearchInput.value = "";
+            editSearchWrap.classList.remove("has-text");
+            filterEditCards("", true);
+          } else if (ye) {
+            Bt();
+          }
+        }
+      });
+    }
+
+    if (editSearchClear && editSearchInput) {
+      editSearchClear.addEventListener("click", () => {
+        editSearchInput.value = "";
+        editSearchWrap.classList.remove("has-text");
+        editSearchInput.focus();
+        filterEditCards("", true);
+      });
+    }
+
     window.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
         if (lyricsModal && lyricsModal.classList.contains("open") && lyricsSearchInput) {
@@ -2243,6 +2359,10 @@
           e.preventDefault();
           infoSearchInput.focus();
           infoSearchInput.select();
+        } else if (ye && ye.classList.contains("open") && editSearchInput) {
+          e.preventDefault();
+          editSearchInput.focus();
+          editSearchInput.select();
         }
       }
     });
@@ -2481,6 +2601,99 @@
       });
     }
 
+    let editScrollTimer, editScrollDragging = false;
+    function updateEditScrollbar() {
+      if (!(editScrollbar && editScrollbarThumb && editContent && editContentWrap)) return;
+      const sh = editContent.scrollHeight,
+        ch = editContent.clientHeight;
+      if (sh > ch && ch > 0) {
+        editContentWrap.classList.add("has-scroll");
+        editScrollbar.classList.add("active");
+        editScrollbar.style.opacity = "";
+        editScrollbar.style.pointerEvents = "";
+        const trackH = editScrollbar.clientHeight,
+          thumbH = Math.max(20, (ch / sh) * trackH);
+        editScrollbarThumb.style.height = `${thumbH}px`;
+        const st = editContent.scrollTop,
+          maxScroll = sh - ch,
+          top = maxScroll > 0 ? (st / maxScroll) * (trackH - thumbH) : 0;
+        editScrollbarThumb.style.transform = `translateY(${top}px)`;
+      } else {
+        editContentWrap.classList.remove("has-scroll");
+        editScrollbar.classList.remove("active");
+        editScrollbar.style.opacity = "0";
+        editScrollbar.style.pointerEvents = "none";
+        if (editScrollDragging) {
+          editScrollDragging = false;
+          editScrollbarThumb.classList.remove("dragging");
+          editContentWrap.classList.remove("is-dragging");
+          if (document.body.getAttribute("data-cursor") === "grabbing") {
+            document.body.removeAttribute("data-cursor");
+          }
+        }
+      }
+    }
+
+    if (editContent) {
+      editContent.addEventListener(
+        "scroll",
+        () => {
+          if (editScrollbarThumb) editScrollbarThumb.classList.add("scrolling");
+          clearTimeout(editScrollTimer);
+          editScrollTimer = setTimeout(() => {
+            if (editScrollbarThumb) editScrollbarThumb.classList.remove("scrolling");
+          }, 150);
+          requestAnimationFrame(updateEditScrollbar);
+        },
+        { passive: true }
+      );
+      new ResizeObserver(() => requestAnimationFrame(updateEditScrollbar)).observe(editContent);
+      new MutationObserver(() => requestAnimationFrame(updateEditScrollbar)).observe(editContent, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    if (editScrollbarThumb) {
+      let startY = 0,
+        startScrollTop = 0,
+        dragScrollH = 0,
+        dragClientH = 0,
+        dragTrackH = 0;
+      editScrollbarThumb.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        editScrollDragging = true;
+        startY = e.clientY;
+        startScrollTop = editContent.scrollTop;
+        dragScrollH = editContent.scrollHeight;
+        dragClientH = editContent.clientHeight;
+        dragTrackH = editScrollbar.clientHeight;
+        editScrollbarThumb.classList.add("dragging");
+        if (editContentWrap) editContentWrap.classList.add("is-dragging");
+        document.body.setAttribute("data-cursor", "grabbing");
+        e.preventDefault();
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (editScrollDragging) {
+          const dy = e.clientY - startY,
+            availTrack = dragTrackH - Math.max(20, (dragClientH / dragScrollH) * dragTrackH),
+            availScroll = dragScrollH - dragClientH,
+            ratio = availTrack > 0 ? dy / availTrack : 0;
+          editContent.scrollTop = startScrollTop + ratio * availScroll;
+        }
+      });
+      window.addEventListener("mouseup", () => {
+        if (editScrollDragging) {
+          editScrollDragging = false;
+          editScrollbarThumb.classList.remove("dragging");
+          if (editContentWrap) editContentWrap.classList.remove("is-dragging");
+          if (document.body.getAttribute("data-cursor") === "grabbing") {
+            document.body.removeAttribute("data-cursor");
+          }
+        }
+      });
+    }
+
     function ot(e = !0, t = []) {
       if (r.length < 2) return void dt({ newIds: t });
       const n = e && te ? X(te) : null,
@@ -2503,11 +2716,16 @@
                 e.size === t.size
                   ? e.name.localeCompare(t.name)
                   : e.size - t.size)
-            : "duration" === i &&
-              (n =
+            : "duration" === i
+            ? (n =
                 e.duration === t.duration
                   ? e.name.localeCompare(t.name)
-                  : e.duration - t.duration),
+                  : e.duration - t.duration)
+            : "played" === i &&
+              (n =
+                (t.lastPlayed || 0) !== (e.lastPlayed || 0)
+                  ? (t.lastPlayed || 0) - (e.lastPlayed || 0)
+                  : e.name.localeCompare(t.name)),
           f ? n : -n
         );
       });
@@ -2545,7 +2763,7 @@
         if (!n) return;
         const o = n.dataset.sort,
           r = g.indexOf(o);
-        -1 !== r && r !== v && ((v = r), lt(), ot());
+        -1 !== r && ((v = r), lt(), ot());
         ce.classList.remove("show");
         e("#iconSortDown").classList.add("active");
         e("#iconSortUp").classList.remove("active");
@@ -2648,6 +2866,7 @@
           type: e("#iconSortType"),
           size: e("#iconSortSize"),
           duration: e("#iconSortDuration"),
+          played: e("#iconSortPlayed"),
         };
         for (const [e, o] of Object.entries(t))
           o && o.classList.toggle("active", e === n);
@@ -2943,7 +3162,7 @@
         </div>
         <div class="sound-actions">
           <button class="icon-btn info" aria-label="Info">${z}</button>
-          <button class="icon-btn edit" aria-label="Rename">
+          <button class="icon-btn edit" aria-label="Edit">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
             </svg>
@@ -2978,12 +3197,7 @@
             e.target.closest(".icon-btn") ||
             (function (e) {
               if (e === i) return Tt(!0), void Et();
-              i = e;
-              u && !u.paused && u.pause();
-              l = !1;
-              kt();
-              Tt(!0);
-              Et();
+              xt(e, l);
             })(n.id);
         }),
         o.querySelector(".info")?.addEventListener("click", (e) => {
@@ -3185,10 +3399,10 @@
     }
 
     function ht(e) {
-      e !== i ? ((i = e), kt(), Ct()) : l ? yt() : bt();
+      e !== i ? xt(e, !0) : l ? yt() : bt();
     }
     function mt(e) {
-      if (e !== i) return (i = e), kt(), void Ct();
+      if (e !== i) return void xt(e, !0);
       l ? yt() : bt();
     }
     function gt() {
@@ -3205,6 +3419,8 @@
         u.addEventListener("ended", Mt),
         u.addEventListener("play", () => {
           l = !0;
+          const cur = r.find((x) => x.id === i);
+          if (cur) cur.lastPlayed = Date.now();
           h ||
             ((ft = performance.now()),
             (vt = u ? u.currentTime : 0),
@@ -3283,6 +3499,339 @@
     function wt() {
       h && (cancelAnimationFrame(h), (h = null));
     }
+
+    let fadeAnimFrame = null;
+    let fadeSwitchToken = 0;
+    let isFadingToPause = false;
+    let isSwitchFading = false;
+
+    function cancelFade() {
+      if (fadeAnimFrame) {
+        cancelAnimationFrame(fadeAnimFrame);
+        fadeAnimFrame = null;
+      }
+    }
+
+    function analyzeAudioTrack(t) {
+      if (!t || t.advMeta || !t.file) return;
+      t.advMeta = "loading";
+      const n = t.file;
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          try {
+            const arrayBuffer = ev.target.result;
+            if (!t.tags) {
+              t.tags = parseAudioTags(arrayBuffer);
+              if (t.tags && t.tags.picture && t.tags.picture.data && !t.coverUrl) {
+                try {
+                  t.coverUrl = URL.createObjectURL(
+                    new Blob([t.tags.picture.data], {
+                      type: t.tags.picture.mime || "image/jpeg",
+                    })
+                  );
+                } catch (err) {}
+              }
+            }
+
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioCtx();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+
+            const channelData = [];
+            for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+              channelData.push(audioBuffer.getChannelData(ch));
+            }
+
+            const workerCode = `
+              self.onmessage = function(ev) {
+                try {
+                  const channels = ev.data.channels;
+                  const sampleRate = ev.data.sampleRate;
+                  const length = ev.data.length;
+                  const numberOfChannels = channels.length;
+                  
+                  let r = 0, i = 0, s = 0, a = 0, l = 0;
+                  
+                  for (let ch = 0; ch < numberOfChannels; ch++) {
+                    const t = channels[ch];
+                    s += t.length;
+                    let n = 0;
+                    for (let e = 0; e < t.length; e++) {
+                      const o = t[e],
+                        s2 = Math.abs(o);
+                      if (s2 > r) r = s2;
+                      i += o * o;
+                      a += o;
+                      let c = o > 0 ? 1 : o < 0 ? -1 : 0;
+                      if (0 !== n && 0 !== c && c !== n) l++;
+                      if (0 !== c) n = c;
+                    }
+                  }
+                  
+                  let c = null;
+                  if (2 === numberOfChannels) {
+                    const e = channels[0],
+                      t = channels[1];
+                    let n = 0,
+                      r2 = 0,
+                      i2 = 0;
+                    for (let o = 0; o < e.length; o++) {
+                      const s3 = e[o],
+                        a2 = t[o];
+                      n += s3 * a2;
+                      r2 += s3 * s3;
+                      i2 += a2 * a2;
+                    }
+                    const s4 = Math.sqrt(r2 * i2);
+                    c = s4 > 0 ? n / s4 : 0;
+                  }
+                  
+                  const d = Math.sqrt(i / s),
+                    u = r > 0 ? 20 * Math.log10(r) : -1 / 0,
+                    p = d > 0 ? 20 * Math.log10(d) : -1 / 0;
+                    
+                  self.postMessage({
+                    sampleRate: sampleRate,
+                    channels: numberOfChannels,
+                    samples: length,
+                    peak: r,
+                    peakDB: u,
+                    rms: d,
+                    rmsDB: p,
+                    dcOffset: a / s,
+                    zeroCrossings: l,
+                    correlation: c,
+                    crestFactor: r > 0 && d > 0 ? u - p : 0,
+                  });
+                } catch(err) {
+                  self.postMessage(null);
+                }
+              }
+            `;
+
+            const blob = new Blob([workerCode], { type: "application/javascript" });
+            const workerUrl = URL.createObjectURL(blob);
+            const worker = new Worker(workerUrl);
+            worker.onmessage = (msg) => {
+              resolve(msg.data);
+              worker.terminate();
+              URL.revokeObjectURL(workerUrl);
+            };
+            worker.onerror = () => {
+              resolve(null);
+              worker.terminate();
+              URL.revokeObjectURL(workerUrl);
+            };
+
+            worker.postMessage({
+              channels: channelData,
+              sampleRate: audioBuffer.sampleRate,
+              length: audioBuffer.length,
+            });
+          } catch (err) {
+            resolve(null);
+          }
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsArrayBuffer(n);
+      }).then((res) => {
+        t.advMeta = res || "error";
+        if (Ae && Ae.classList.contains("open") && Ft === t.id) {
+          jt(t.id);
+        }
+      });
+    }
+
+    function computeAdaptiveFadeProfile(track, mode = "out", currentTime = 0) {
+      if (!track) {
+        return {
+          duration: mode === "out" ? 220 : 280,
+          curveType: "equal-power",
+          exponent: 1,
+          label: "Adaptive • Standard 250ms (Equal Power)",
+        };
+      }
+
+      const dur = track.duration || 60;
+      let baseDuration = 240;
+
+      // 1. Duration-based scaling (SFX vs Jingle vs Standard Song vs Long Song)
+      if (dur < 4) {
+        baseDuration = mode === "out" ? 80 : 100;
+      } else if (dur < 15) {
+        baseDuration = mode === "out" ? 130 : 160;
+      } else if (dur < 45) {
+        baseDuration = mode === "out" ? 180 : 220;
+      } else if (dur < 180) {
+        baseDuration = mode === "out" ? 220 : 280;
+      } else {
+        baseDuration = mode === "out" ? 270 : 340;
+      }
+
+      // 2. Genre & acoustic style analysis
+      const genre = (track.tags && track.tags.genre ? track.tags.genre : "").toLowerCase();
+      const name = (track.name || "").toLowerCase();
+      const styleText = `${genre} ${name}`;
+
+      let curveType = "equal-power";
+      let genreMultiplier = 1.0;
+      let styleName = "Balanced";
+
+      if (
+        /ambient|chill|lo-?fi|classical|acoustic|piano|jazz|new age|meditat|soundtrack|folk|ballad|slow|orchestr|choir/.test(
+          styleText
+        )
+      ) {
+        genreMultiplier = 1.35;
+        curveType = "sine-ease";
+        styleName = "Atmospheric S-Curve";
+      } else if (
+        /metal|punk|rock|hard|heavy|grunge|death|industrial|distortion/.test(
+          styleText
+        )
+      ) {
+        genreMultiplier = 0.85;
+        curveType = "punchy";
+        styleName = "Punchy Fast-Cut";
+      } else if (
+        /techno|house|edm|dance|trance|electronic|club|synth|beat|disco|trap/.test(
+          styleText
+        )
+      ) {
+        genreMultiplier = 1.0;
+        curveType = "equal-power";
+        styleName = "Beat-Matched Equal Power";
+      } else if (/hip-?hop|rap|r&b|soul|pop|urban|vocal/.test(styleText)) {
+        genreMultiplier = 0.95;
+        curveType = "equal-power";
+        styleName = "Smooth Equal Power";
+      }
+
+      // 3. Audio Analysis metrics (from advMeta if decoded)
+      let dynamicExponent = 1.0;
+      let acousticNote = "";
+
+      if (track.advMeta && typeof track.advMeta === "object" && track.advMeta.rms !== undefined) {
+        const rmsDB = track.advMeta.rmsDB;
+        const crestFactor = track.advMeta.crestFactor;
+        const zeroCrossings = track.advMeta.zeroCrossings;
+
+        if (rmsDB > -12) {
+          if (mode === "in") {
+            dynamicExponent = 1.45;
+            genreMultiplier *= 1.15;
+          } else {
+            dynamicExponent = 1.25;
+          }
+          acousticNote = "Loud Mastered";
+        } else if (rmsDB < -22 && rmsDB !== -1 / 0) {
+          if (mode === "in") {
+            dynamicExponent = 0.75;
+          }
+          acousticNote = "Dynamic Delicate";
+        }
+
+        if (crestFactor > 15) {
+          curveType = "sine-ease";
+        }
+
+        if (zeroCrossings > 1200000) {
+          if (mode === "out") genreMultiplier = Math.max(genreMultiplier, 1.1);
+        }
+      }
+
+      // 4. Playhead context (for fade-out)
+      if (mode === "out" && track.duration && currentTime) {
+        const remaining = track.duration - currentTime;
+        if (remaining > 0 && remaining < 0.6) {
+          baseDuration = Math.min(baseDuration, 120);
+        }
+      }
+
+      const finalDuration = Math.round(
+        Math.max(70, Math.min(500, baseDuration * genreMultiplier))
+      );
+
+      return {
+        duration: finalDuration,
+        curveType,
+        exponent: dynamicExponent,
+        label: `Adaptive • ${finalDuration}ms (${styleName}${acousticNote ? `, ${acousticNote}` : ""})`,
+      };
+    }
+
+    function fadeVolumeTo(
+      targetVolume,
+      duration,
+      onComplete,
+      curveType = "equal-power",
+      exponent = 1.0
+    ) {
+      cancelFade();
+      if (!u) {
+        if (onComplete) onComplete();
+        return;
+      }
+      const startVolume = u.volume;
+      if (Math.abs(startVolume - targetVolume) < 0.01 || duration <= 0) {
+        u.volume = Math.max(0, Math.min(1, targetVolume));
+        if (onComplete) onComplete();
+        return;
+      }
+      const startTime = performance.now();
+      const isFadeOut = targetVolume < startVolume;
+
+      function step(now) {
+        const elapsed = now - startTime;
+        let progress = Math.min(1, Math.max(0, elapsed / duration));
+
+        if (exponent !== 1.0 && exponent > 0) {
+          progress = Math.pow(progress, exponent);
+        }
+
+        let currentVol;
+        if (isFadeOut) {
+          if (curveType === "sine-ease") {
+            currentVol = startVolume * 0.5 * (1 + Math.cos(progress * Math.PI));
+          } else if (curveType === "punchy") {
+            currentVol =
+              startVolume * Math.cos(Math.pow(progress, 1.35) * (Math.PI / 2));
+          } else {
+            currentVol = startVolume * Math.cos(progress * (Math.PI / 2));
+          }
+        } else {
+          if (curveType === "sine-ease") {
+            currentVol =
+              startVolume +
+              (targetVolume - startVolume) * 0.5 * (1 - Math.cos(progress * Math.PI));
+          } else if (curveType === "punchy") {
+            currentVol =
+              startVolume +
+              (targetVolume - startVolume) *
+                Math.sin(Math.pow(progress, 0.75) * (Math.PI / 2));
+          } else {
+            currentVol =
+              startVolume +
+              (targetVolume - startVolume) * Math.sin(progress * (Math.PI / 2));
+          }
+        }
+
+        if (u) {
+          u.volume = Math.max(0, Math.min(1, currentVol));
+        }
+
+        if (progress < 1) {
+          fadeAnimFrame = requestAnimationFrame(step);
+        } else {
+          fadeAnimFrame = null;
+          if (u) u.volume = Math.max(0, Math.min(1, targetVolume));
+          if (onComplete) onComplete();
+        }
+      }
+      fadeAnimFrame = requestAnimationFrame(step);
+    }
+
     function kt() {
       const e = r.find((e) => e.id === i);
       if (!e) return;
@@ -3295,22 +3844,71 @@
           p = !1;
         }, 80));
     }
-    function bt() {
-      const e = r.find((e) => e.id === i);
+
+    function bt(targetId, skipFadeIn = false, customProfile = null) {
+      const trackId = targetId !== undefined ? targetId : i;
+      const e = r.find((e) => e.id === trackId);
       if (!e) return;
+      e.lastPlayed = Date.now();
       const t = gt();
-      t.src !== e.url &&
-        ((p = !0),
-        (t.src = e.url),
+      if (t.src !== e.url) {
+        p = !0;
+        t.src = e.url;
+        t.currentTime = 0;
         setTimeout(() => {
           p = !1;
-        }, 80));
-      const n = t.play();
-      n && n.catch && n.catch(() => {});
+        }, 80);
+      }
+      isFadingToPause = false;
+      if (!skipFadeIn) {
+        cancelFade();
+        t.volume = 0;
+        const n = t.play();
+        if (n && n.catch) n.catch(() => {});
+        const inProfile = customProfile || computeAdaptiveFadeProfile(e, "in", t.currentTime);
+        fadeVolumeTo(
+          1,
+          inProfile.duration,
+          null,
+          inProfile.curveType,
+          inProfile.exponent
+        );
+      } else {
+        cancelFade();
+        t.volume = 1;
+        const n = t.play();
+        if (n && n.catch) n.catch(() => {});
+      }
     }
-    function yt() {
-      u && u.pause();
+
+    function yt(immediate = false) {
+      if (!u) return;
+      if (immediate || u.paused) {
+        cancelFade();
+        isFadingToPause = false;
+        u.pause();
+        u.volume = 1;
+        return;
+      }
+      isFadingToPause = true;
+      const currentTrack = r.find((x) => x.id === i);
+      const outProfile = computeAdaptiveFadeProfile(currentTrack, "out", u.currentTime);
+      const pauseDuration = Math.min(180, Math.max(90, Math.round(outProfile.duration * 0.75)));
+      fadeVolumeTo(
+        0,
+        pauseDuration,
+        () => {
+          isFadingToPause = false;
+          if (u) {
+            u.pause();
+            u.volume = 1;
+          }
+        },
+        outProfile.curveType,
+        outProfile.exponent
+      );
     }
+
     function Lt() {
       const e = b();
       if (!e.length) return;
@@ -3324,24 +3922,98 @@
             n = Math.floor(Math.random() * e.length);
           } while (n === t);
       else n = (t + 1) % e.length;
-      n === t
-        ? u && ((retProg(), (u.currentTime = 0)), u.play().catch(() => {}))
-        : xt(e[n].id, !0);
+      if (n === t) {
+        if (u && !u.paused) {
+          const currentTrack = r.find((x) => x.id === i);
+          const outProfile = computeAdaptiveFadeProfile(currentTrack, "out", u.currentTime);
+          const inProfile = computeAdaptiveFadeProfile(currentTrack, "in", 0);
+          fadeVolumeTo(
+            0,
+            Math.min(150, Math.round(outProfile.duration * 0.7)),
+            () => {
+              retProg();
+              u.currentTime = 0;
+              bt(i, false, inProfile);
+            },
+            outProfile.curveType,
+            outProfile.exponent
+          );
+        } else if (u) {
+          retProg();
+          u.currentTime = 0;
+          bt(i, false);
+        }
+      } else {
+        xt(e[n].id, !0);
+      }
     }
+
     function xt(e, t) {
-      i = e;
-      kt();
-      t ? Ct() : ((l = !1), u && u.pause(), Tt(!0), Et());
+      const targetId = e;
+      const targetTrack = r.find((x) => x.id === targetId);
+      if (!targetTrack) return;
+
+      const currentTrack = r.find((x) => x.id === i);
+      const thisToken = ++fadeSwitchToken;
+      isFadingToPause = false;
+
+      if (t && u && !u.paused && l) {
+        isSwitchFading = true;
+
+        const outProfile = computeAdaptiveFadeProfile(currentTrack, "out", u.currentTime);
+        const inProfile = computeAdaptiveFadeProfile(targetTrack, "in", 0);
+
+        i = targetId;
+        Tt(!0);
+        Et();
+
+        fadeVolumeTo(
+          0,
+          outProfile.duration,
+          () => {
+            if (thisToken !== fadeSwitchToken) return;
+            isSwitchFading = false;
+            kt();
+            bt(targetId, false, inProfile);
+          },
+          outProfile.curveType,
+          outProfile.exponent
+        );
+      } else {
+        cancelFade();
+        isSwitchFading = false;
+        i = targetId;
+        kt();
+        if (t) {
+          Ct();
+        } else {
+          l = !1;
+          if (u) {
+            u.pause();
+            u.volume = 1;
+          }
+          Tt(!0);
+          Et();
+        }
+      }
     }
+
     function Ct() {
       Tt(!0);
       Et();
       bt();
     }
+
     function Mt() {
-      if (2 === d && u)
-        return (retProg(), (u.currentTime = 0)), void u.play().catch(() => {});
-      1 === d || c ? Lt() : yt();
+      if (2 === d && u) {
+        retProg();
+        u.currentTime = 0;
+        const currentTrack = r.find((x) => x.id === i);
+        const inProfile = computeAdaptiveFadeProfile(currentTrack, "in", 0);
+        bt(i, false, inProfile);
+        return;
+      }
+      1 === d || c ? Lt() : yt(true);
     }
     function Et() {
       const e = r.find((e) => e.id === i);
@@ -3467,8 +4139,10 @@
       }
       if (i === e) {
         i = null;
+        cancelFade();
         if (u) {
           u.pause();
+          u.volume = 1;
           u.removeAttribute("src");
           u.load();
         }
@@ -3488,22 +4162,191 @@
       }, 310);
     }
 
-    function qt(e) {
-      if (!ye || !Le) return;
-      const t = r.find((t) => t.id === e);
-      t &&
-        ((a = e),
-        (Le.value = t.name),
-        ye.setAttribute("aria-hidden", "false"),
-        requestAnimationFrame(() => ye.classList.add("open")),
-        setTimeout(() => Le.focus(), 80));
+    const EDIT_FIELDS = [
+      { key: "name", label: "Name", icon: iconName, isTextarea: false, isFull: false },
+      { key: "artist", label: "Artist", icon: iconArtist, isTextarea: false, isFull: false },
+      { key: "album", label: "Album", icon: iconAlbum, isTextarea: false, isFull: false },
+      { key: "genre", label: "Genre", icon: iconGenre, isTextarea: false, isFull: false },
+      { key: "year", label: "Year", icon: iconYear, isTextarea: false, isFull: false },
+      { key: "track", label: "Track", icon: iconTrack, isTextarea: false, isFull: false },
+      { key: "discnumber", label: "Discnumber", icon: iconDiscnumber, isTextarea: false, isFull: false },
+      { key: "composer", label: "Composer", icon: iconComposer, isTextarea: false, isFull: false },
+      { key: "comment", label: "Comment", icon: iconComment, isTextarea: false, isFull: true },
+      { key: "lyrics", label: "Lyrics", icon: iconLyrics, isTextarea: true, isFull: true },
+    ];
+
+    let currentEditTrackId = null;
+
+    function filterEditCards(query, animate = true) {
+      if (!editContent) return;
+      const rows = Array.from(editContent.querySelectorAll(".edit-row"));
+      const emptyEl = editContent.querySelector("#editSearchEmpty");
+      if (!rows.length) return;
+
+      const q = (query || "").trim().toLowerCase();
+
+      const firstRects = new Map();
+      if (animate) {
+        for (const row of rows) {
+          if (!row.classList.contains("is-hidden")) {
+            firstRects.set(row, row.getBoundingClientRect());
+          }
+        }
+      }
+
+      let matchCount = 0;
+      for (const row of rows) {
+        const rawLabel = row.dataset.rawLabel || "";
+        const input = row.querySelector(".edit-input");
+        const val = input ? input.value : "";
+        const labelSpan = row.querySelector(".edit-label-text");
+
+        if (!q) {
+          matchCount++;
+          row.classList.remove("is-hidden");
+          if (labelSpan) labelSpan.textContent = rawLabel;
+        } else {
+          const isMatch = rawLabel.toLowerCase().includes(q) || val.toLowerCase().includes(q);
+          if (isMatch) {
+            matchCount++;
+            row.classList.remove("is-hidden");
+            if (labelSpan) {
+              labelSpan.innerHTML = highlightInfoMatches(rawLabel, q);
+            }
+          } else {
+            row.classList.add("is-hidden");
+            if (labelSpan) labelSpan.textContent = rawLabel;
+          }
+        }
+      }
+
+      if (emptyEl) {
+        emptyEl.style.display = matchCount === 0 && q ? "flex" : "none";
+      }
+
+      if (animate) {
+        const visibleRows = rows.filter((r) => !r.classList.contains("is-hidden"));
+        for (const row of visibleRows) {
+          const lastRect = row.getBoundingClientRect();
+          const firstRect = firstRects.get(row);
+          if (firstRect) {
+            const dx = firstRect.left - lastRect.left;
+            const dy = firstRect.top - lastRect.top;
+            if (dx !== 0 || dy !== 0) {
+              row.style.transform = `translate(${dx}px, ${dy}px)`;
+              row.style.transition = "none";
+            }
+          } else {
+            row.style.opacity = "0";
+            row.style.transform = "scale(0.96)";
+            row.style.transition = "none";
+          }
+        }
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            for (const row of visibleRows) {
+              row.style.transition =
+                "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+              row.style.transform = "";
+              row.style.opacity = "1";
+            }
+          });
+        });
+      }
+
+      requestAnimationFrame(updateEditScrollbar);
     }
+
+    function qt(e) {
+      if (!ye || !editContent) return;
+      const t = r.find((t) => t.id === e);
+      if (!t) return;
+      currentEditTrackId = e;
+      a = e;
+
+      if (editSearchInput) editSearchInput.value = "";
+      if (editSearchWrap) editSearchWrap.classList.remove("has-text", "is-focused");
+
+      const cleanVal = (v) => (!v || v === "N/A" ? "" : v);
+      const tagData = t.tags || {};
+      const fieldValues = {
+        name: t.name || "",
+        artist: cleanVal(tagData.artist),
+        album: cleanVal(tagData.album),
+        genre: cleanVal(tagData.genre),
+        year: cleanVal(tagData.year),
+        track: cleanVal(tagData.track),
+        discnumber: cleanVal(tagData.discnumber),
+        composer: cleanVal(tagData.composer),
+        comment: cleanVal(tagData.comment),
+        lyrics: cleanVal(t.lyrics),
+      };
+
+      editContent.innerHTML = EDIT_FIELDS.map((f) => {
+        const val = fieldValues[f.key] || "";
+        return `
+          <div class="edit-row${f.isFull ? " edit-row-full" : ""}" data-field="${f.key}" data-raw-label="${O(f.label)}">
+            <div class="edit-label">
+              ${f.icon}
+              <span class="edit-sep"></span>
+              <span class="edit-label-text">${O(f.label)}</span>
+            </div>
+            <div class="edit-field-wrap">
+              ${f.isTextarea
+                ? `<textarea class="edit-textarea edit-input" id="editField_${f.key}" data-field="${f.key}" placeholder="Enter ${f.label.toLowerCase()}..." spellcheck="false" rows="4">${O(val)}</textarea>`
+                : `<input type="text" class="edit-input" id="editField_${f.key}" data-field="${f.key}" value="${O(val)}" placeholder="Enter ${f.label.toLowerCase()}..." autocomplete="off" spellcheck="false" />`
+              }
+            </div>
+          </div>
+        `;
+      }).join("") + `
+        <div class="edit-search-empty" id="editSearchEmpty">
+          <div class="search-empty-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
+          <div class="search-empty-title">No matching fields</div>
+          <div class="search-empty-sub">Try searching for another term</div>
+        </div>
+      `;
+
+      editContent.querySelectorAll(".edit-input").forEach((inp) => {
+        inp.addEventListener("input", () => {
+          if (editSearchInput && editSearchInput.value.trim()) {
+            filterEditCards(editSearchInput.value, false);
+          }
+        });
+        inp.addEventListener("keydown", (evt) => {
+          if (evt.key === "Enter" && !inp.classList.contains("edit-textarea")) {
+            evt.preventDefault();
+            zt();
+          }
+        });
+      });
+
+      ye.setAttribute("aria-hidden", "false");
+      requestAnimationFrame(() => {
+        ye.classList.add("open");
+        updateEditScrollbar();
+        const firstInput = editContent.querySelector("#editField_name");
+        if (firstInput) {
+          setTimeout(() => firstInput.focus(), 80);
+        }
+      });
+    }
+
     function Bt() {
-      ye &&
-        ye.classList.contains("open") &&
-        (ye.classList.remove("open"),
-        ye.setAttribute("aria-hidden", "true"),
-        (a = null));
+      if (ye && ye.classList.contains("open")) {
+        ye.classList.remove("open");
+        ye.setAttribute("aria-hidden", "true");
+        currentEditTrackId = null;
+        a = null;
+        if (editSearchInput) editSearchInput.value = "";
+        if (editSearchWrap) editSearchWrap.classList.remove("has-text", "is-focused");
+      }
     }
 
     let Ft = null;
@@ -3612,128 +4455,7 @@
       Ft = e;
 
       if (!t.advMeta && t.file) {
-        t.advMeta = "loading";
-        const n = t.file;
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = async (ev) => {
-            try {
-              const arrayBuffer = ev.target.result;
-              // Extract ID3 / Vorbis tags if not already extracted
-              if (!t.tags) {
-                t.tags = parseAudioTags(arrayBuffer);
-                if (t.tags && t.tags.picture && t.tags.picture.data && !t.coverUrl) {
-                  try {
-                    t.coverUrl = URL.createObjectURL(new Blob([t.tags.picture.data], { type: t.tags.picture.mime || "image/jpeg" }));
-                  } catch (err) {}
-                }
-              }
-
-              const AudioCtx = window.AudioContext || window.webkitAudioContext;
-              const audioCtx = new AudioCtx();
-              const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
-
-              const channelData = [];
-              for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-                channelData.push(audioBuffer.getChannelData(ch));
-              }
-
-              const workerCode = `
-                self.onmessage = function(ev) {
-                  try {
-                    const channels = ev.data.channels;
-                    const sampleRate = ev.data.sampleRate;
-                    const length = ev.data.length;
-                    const numberOfChannels = channels.length;
-                    
-                    let r = 0, i = 0, s = 0, a = 0, l = 0;
-                    
-                    for (let ch = 0; ch < numberOfChannels; ch++) {
-                      const t = channels[ch];
-                      s += t.length;
-                      let n = 0;
-                      for (let e = 0; e < t.length; e++) {
-                        const o = t[e],
-                          s2 = Math.abs(o);
-                        if (s2 > r) r = s2;
-                        i += o * o;
-                        a += o;
-                        let c = o > 0 ? 1 : o < 0 ? -1 : 0;
-                        if (0 !== n && 0 !== c && c !== n) l++;
-                        if (0 !== c) n = c;
-                      }
-                    }
-                    
-                    let c = null;
-                    if (2 === numberOfChannels) {
-                      const e = channels[0],
-                        t = channels[1];
-                      let n = 0,
-                        r2 = 0,
-                        i2 = 0;
-                      for (let o = 0; o < e.length; o++) {
-                        const s3 = e[o],
-                          a2 = t[o];
-                        n += s3 * a2;
-                        r2 += s3 * s3;
-                        i2 += a2 * a2;
-                      }
-                      const s4 = Math.sqrt(r2 * i2);
-                      c = s4 > 0 ? n / s4 : 0;
-                    }
-                    
-                    const d = Math.sqrt(i / s),
-                      u = r > 0 ? 20 * Math.log10(r) : -1 / 0,
-                      p = d > 0 ? 20 * Math.log10(d) : -1 / 0;
-                      
-                    self.postMessage({
-                      sampleRate: sampleRate,
-                      channels: numberOfChannels,
-                      samples: length,
-                      peak: r,
-                      peakDB: u,
-                      rms: d,
-                      rmsDB: p,
-                      dcOffset: a / s,
-                      zeroCrossings: l,
-                      correlation: c,
-                      crestFactor: r > 0 && d > 0 ? u - p : 0,
-                    });
-                  } catch(err) {
-                    self.postMessage(null);
-                  }
-                }
-              `;
-
-              const blob = new Blob([workerCode], { type: "application/javascript" });
-              const workerUrl = URL.createObjectURL(blob);
-              const worker = new Worker(workerUrl);
-              worker.onmessage = (msg) => {
-                resolve(msg.data);
-                worker.terminate();
-                URL.revokeObjectURL(workerUrl);
-              };
-              worker.onerror = () => {
-                resolve(null);
-                worker.terminate();
-                URL.revokeObjectURL(workerUrl);
-              };
-
-              worker.postMessage({
-                channels: channelData,
-                sampleRate: audioBuffer.sampleRate,
-                length: audioBuffer.length,
-              });
-            } catch (err) {
-              resolve(null);
-            }
-          };
-          reader.onerror = () => resolve(null);
-          reader.readAsArrayBuffer(n);
-        }).then((res) => {
-          t.advMeta = res || "error";
-          Ae.classList.contains("open") && Ft === t.id && jt(t.id);
-        });
+        analyzeAudioTrack(t);
       }
 
       const o = t.addedAt
@@ -3770,7 +4492,7 @@
       const c = [
         {
           label: "Name",
-          icon: '\n      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">\n        <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>\n      </svg>',
+          icon: iconName,
           val: t.name,
           help: "The base filename of the audio track.",
         },
@@ -3872,6 +4594,12 @@
           copyVal: (t.lyrics && t.lyrics.trim()) ? t.lyrics.trim() : "N/A",
           help: "Embedded lyrics or text transcription for this audio track.",
           hasEdit: true,
+        },
+        {
+          label: "Transition Profile",
+          icon: iconTransition,
+          val: computeAdaptiveFadeProfile(t, "in", 0).label,
+          help: "Automatic fade curve and transition duration calculated directly from track duration, genre, and acoustic loudness.",
         },
       ];
 
@@ -4094,36 +4822,84 @@
     }
 
     function zt() {
-      const e = r.find((e) => e.id === a);
-      if (!e) return void Bt();
-      const n = (Le.value || "").trim();
-      if (n && n !== e.name) {
-        const o = e.name;
-        e.name = n;
-        te &&
-          t(`.sound-card[data-id="${e.id}"] .sound-name`, te).forEach((e) => {
-            e.textContent !== n &&
-              (e.classList.add("swapping"),
+      const trackId = currentEditTrackId || a;
+      const soundTrack = r.find((e) => e.id === trackId);
+      if (!soundTrack || !editContent) return void Bt();
+
+      const getVal = (key) => {
+        const el = editContent.querySelector(`#editField_${key}`);
+        return el ? el.value : "";
+      };
+
+      const newName = (getVal("name") || "").trim() || soundTrack.name;
+      const newArtist = (getVal("artist") || "").trim();
+      const newAlbum = (getVal("album") || "").trim();
+      const newGenre = (getVal("genre") || "").trim();
+      const newYear = (getVal("year") || "").trim();
+      const newTrack = (getVal("track") || "").trim();
+      const newDiscnumber = (getVal("discnumber") || "").trim();
+      const newComposer = (getVal("composer") || "").trim();
+      const newComment = (getVal("comment") || "").trim();
+      const newLyrics = getVal("lyrics") || "";
+
+      const oldName = soundTrack.name;
+      soundTrack.name = newName;
+      soundTrack.tags = soundTrack.tags || {};
+      soundTrack.tags.artist = newArtist;
+      soundTrack.tags.album = newAlbum;
+      soundTrack.tags.genre = newGenre;
+      soundTrack.tags.year = newYear;
+      soundTrack.tags.track = newTrack;
+      soundTrack.tags.discnumber = newDiscnumber;
+      soundTrack.tags.composer = newComposer;
+      soundTrack.tags.comment = newComment;
+      soundTrack.lyrics = newLyrics ? newLyrics.trim() : null;
+
+      if (oldName !== newName) {
+        if (te) {
+          Array.from(te.querySelectorAll(`.sound-card[data-id="${soundTrack.id}"] .sound-name`)).forEach((el) => {
+            if (el.textContent !== newName) {
+              el.classList.add("swapping");
               setTimeout(() => {
-                e.textContent = n;
-                e.classList.remove("swapping");
-                W(e.closest(".sound-name-wrap"), e);
-              }, 180));
+                el.textContent = newName;
+                el.classList.remove("swapping");
+                W(el.closest(".sound-name-wrap"), el);
+              }, 180);
+            }
           });
-        if (K) {
-          const t = K.querySelector(`.rail-sound[data-id="${e.id}"]`);
-          t && (t.dataset.tip = n);
         }
-        e.id === i &&
-          (De && De.textContent !== n
-            ? (De.classList.add("swapping"),
-              setTimeout(() => {
-                At(e);
-                De.classList.remove("swapping");
-              }, 180))
-            : At(e));
-        It(`Renamed — ${o} → ${n}`, "success");
+        if (K) {
+          const railItem = K.querySelector(`.rail-sound[data-id="${soundTrack.id}"]`);
+          if (railItem) railItem.dataset.tip = newName;
+        }
+        if (soundTrack.id === i) {
+          if (De && De.textContent !== newName) {
+            De.classList.add("swapping");
+            setTimeout(() => {
+              At(soundTrack);
+              De.classList.remove("swapping");
+            }, 180);
+          } else {
+            At(soundTrack);
+          }
+        }
       }
+
+      if (typeof setupAdaptiveProfile === "function") {
+        setupAdaptiveProfile(soundTrack);
+      }
+
+      if (Ae && Ae.classList.contains("open") && Ft === soundTrack.id) {
+        jt(soundTrack.id);
+      }
+
+      if (typeof lyricsModal !== "undefined" && lyricsModal && lyricsModal.classList.contains("open") && lyricsTrackId === soundTrack.id) {
+        if (typeof openLyricsModal === "function") {
+          openLyricsModal(soundTrack.id, false);
+        }
+      }
+
+      It(`Updated — ${soundTrack.name}`, "success");
       Bt();
     }
 

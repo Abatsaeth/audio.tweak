@@ -259,6 +259,21 @@
                           <circle cx="12" cy="12" r="10" />
                           <path d="M12 6v6l4 2" />
                         </svg>
+                        <svg
+                          id="iconSortPlayed"
+                          class="transition-icon"
+                          viewBox="0 0 24 24"
+                          width="12"
+                          height="12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none" />
+                        </svg>
                       </div>
                     </button>
                     <div class="sort-divider"></div>
@@ -391,6 +406,23 @@
                       <div class="sort-item-sep"></div>
                       Duration
                     </button>
+                    <button class="sort-item" data-sort="played">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="12"
+                        height="12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none" />
+                      </svg>
+                      <div class="sort-item-sep"></div>
+                      Played
+                    </button>
                   </div>
                 </div>
               </div>
@@ -478,8 +510,57 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span class="modal-title-sep"></span> <span>Rename</span>
+            <span class="modal-title-sep"></span> <span>Edit</span>
           </h3>
+          <span class="modal-title-sep edit-header-sep" aria-hidden="true"></span>
+          <div class="searchbar-wrap edit-search-wrap" id="editSearchWrap">
+            <div class="searchbar-icon" id="editSearchIcon">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <div class="searchbar-sep"></div>
+            <div class="searchbar-placeholder" id="editSearchPlaceholder">
+              Search Here
+            </div>
+            <input
+              type="text"
+              class="searchbar-input"
+              id="editSearchInput"
+              aria-label="Search Edit Fields"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button
+              class="searchbar-clear edit-search-clear"
+              id="editSearchClear"
+              aria-label="Clear search"
+              tabindex="-1"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="11"
+                height="11"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <span class="modal-title-sep edit-header-sep" aria-hidden="true"></span>
           <button class="modal-close-btn" data-close aria-label="Close">
             <svg
               viewBox="0 0 24 24"
@@ -497,13 +578,11 @@
             </svg>
           </button>
         </div>
-        <div class="modal-body">
-          <input
-            type="text"
-            id="editInput"
-            maxlength="60"
-            placeholder="New name"
-          />
+        <div class="edit-content-wrap modal-body" id="editContentWrap">
+          <div class="edit-content" id="editContent"></div>
+          <div class="custom-scrollbar" id="editScrollbar">
+            <div class="custom-scrollbar-thumb" id="editScrollbarThumb"></div>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" data-close>Cancel</button>
@@ -796,7 +875,7 @@
           />
         </svg>
         <div class="context-item-sep"></div>
-        <span>Edit Name</span>
+        <span>Edit</span>
       </button>
       <button class="context-item" id="contextPin">
         <svg

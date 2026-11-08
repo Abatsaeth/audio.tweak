@@ -3022,6 +3022,285 @@ mark.info-highlight {
   font-size: 12px;
   color: var(--text-mute);
 }
+
+/* Edit Modal */
+#editModal .modal-card {
+  width: min(800px, 92vw);
+  max-height: min(680px, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+#editModal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+#editModal .modal-header h3 {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+#editModal .edit-header-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline-2);
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+#editModal .edit-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 30px;
+  border-radius: 10px;
+  margin-right: 0;
+  cursor: text;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+#editModal .edit-search-wrap:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+#editModal .edit-search-wrap.is-focused {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+#editModal .edit-search-wrap .searchbar-icon {
+  position: absolute;
+  left: 9px;
+  display: flex;
+  align-items: center;
+  color: var(--text-mute);
+  pointer-events: none;
+}
+#editModal .edit-search-wrap .searchbar-sep {
+  position: absolute;
+  left: 29px;
+  width: 1px;
+  height: 14px;
+  background: var(--hairline);
+  pointer-events: none;
+}
+#editModal .edit-search-wrap .searchbar-placeholder {
+  position: absolute;
+  left: 38px;
+  color: var(--text-mute);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  pointer-events: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#editModal .edit-search-wrap .searchbar-input {
+  width: 100%;
+  height: 100%;
+  background: 0 0;
+  border: none;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding-left: 38px;
+  padding-right: 28px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+#editModal .edit-search-wrap.is-focused .searchbar-placeholder,
+#editModal .edit-search-wrap:not(.is-focused).has-text .searchbar-placeholder {
+  opacity: 0;
+}
+.edit-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--d-fast) var(--ease-soft),
+    color var(--d-fast) var(--ease-soft),
+    background var(--d-fast) var(--ease-soft),
+    transform var(--d-fast) var(--ease-soft);
+}
+.edit-search-wrap.has-text .edit-search-clear {
+  opacity: 1;
+  pointer-events: auto;
+}
+.edit-search-clear:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.edit-search-clear:active {
+  transform: scale(0.92);
+}
+#editModal .modal-close-btn {
+  margin-right: -4px;
+  flex-shrink: 0;
+}
+.edit-content-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.edit-content-wrap.is-dragging .custom-scrollbar.active,
+.edit-content-wrap:hover .custom-scrollbar.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+#editScrollbar {
+  bottom: 0;
+  right: 4px;
+  top: 14px;
+}
+.edit-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-soft);
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0;
+  scrollbar-width: none;
+}
+.edit-content::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 640px) {
+  .edit-content {
+    grid-template-columns: 1fr;
+  }
+}
+.edit-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+  background: rgb(255 255 255 / 3%);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  position: relative;
+  will-change: transform, opacity;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.edit-row:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgb(255 255 255 / 4.5%);
+}
+.edit-row:focus-within {
+  border-color: rgba(226, 52, 74, 0.45);
+  background: rgb(255 255 255 / 5%);
+}
+.edit-row.edit-row-full {
+  grid-column: 1 / -1;
+}
+.edit-row.is-hidden {
+  display: none !important;
+}
+.edit-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  color: var(--text-mute);
+  line-height: 1;
+  font-size: 13px;
+  user-select: none;
+}
+.edit-label svg,
+.edit-sep {
+  transform: translateY(1px);
+}
+.edit-label svg {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.edit-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--hairline-2);
+  flex-shrink: 0;
+}
+.edit-label-text {
+  font-weight: 500;
+  color: var(--text-mute);
+}
+.edit-field-wrap {
+  position: relative;
+  width: 100%;
+}
+.edit-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  box-sizing: border-box;
+}
+.edit-input:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.edit-input:focus {
+  border-color: rgb(226 52 74 / 55%);
+  background: rgb(226 52 74 / 5%);
+  box-shadow: 0 0 0 3px rgb(226 52 74 / 12%);
+}
+.edit-textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+}
+.edit-search-empty {
+  display: none;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--text-mute);
+  animation: fadeIn 0.25s var(--ease-out);
+}
+.edit-search-empty .search-empty-icon {
+  margin-bottom: 10px;
+  color: var(--text-mute);
+  opacity: 0.6;
+}
+.edit-search-empty .search-empty-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+.edit-search-empty .search-empty-sub {
+  font-size: 12px;
+  color: var(--text-mute);
+}
 .info-help-btn {
   position: absolute;
   right: 8px;
